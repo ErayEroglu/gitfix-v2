@@ -1,11 +1,13 @@
 import OpenAI from 'openai'
 
-export async function generate_grammatically_correct_content(file_content: string): Promise<string> {
+export async function generate_grammatically_correct_content(
+    file_content: string
+): Promise<string> {
     if (file_content.length > 4e5) {
-        throw new Error("File content is too large");
+        throw new Error('File content is too large')
     }
-    const key = process.env.OPENAI_API_KEY;
-    const openai = new OpenAI({apiKey: key});
+    const key = process.env.OPENAI_API_KEY
+    const openai = new OpenAI({ apiKey: key })
     const completion = await openai.chat.completions.create({
         messages: [
             {

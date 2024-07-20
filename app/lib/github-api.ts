@@ -11,7 +11,7 @@ export class Github_API {
     url: string
     repo_details: any
     md_files_content: any
-    updatedItems: number[]
+    updatedItems: string[]
     headers: any
 
     constructor(owner: string, repo: string, auth: string | undefined) {
@@ -25,55 +25,13 @@ export class Github_API {
         this.headers = this.getHeaders()
     }
 
-    async initializeRepoDetails(): Promise<void>{
+    async initializeRepoDetails(): Promise<void> {
         this.repo_details = await this.get_repo_details()
     }
 
-    // find md files in the repo
-    async get_md_files(): Promise<void> {
-        // send an api request to github api and get the repo details
-        const url =
-            this.url +
-            `/git/trees/${this.repo_details.default_branch}?recursive=0`
-        const headers = this.headers
-        const response = await fetch(url, { headers })
-        if (!response.ok) {
-            throw new Error(`Github API is unable to traverse through the repository : ${response.status}`)
-        }
-        const data = await response.json()
-        console.log(data)
-        console.log(`discovering items in ${this.owner + '/' + this.repo}`)
-        // identify the md files in the repo
-        console.log(data.tree)
-        for (const item of data.tree) {
-            if (item.type === 'blob') {
-                let type = item.path.split('.').pop()
-                if (type == 'md' || type === 'mdx') {
-                    console.log(item.path)
-                    this.items.push({ path: item.path, sha: item.sha })
-                }
-            }
-        }
-        console.log(`discovered ${this.items.length} items`)
-    }
-
-    // get the content of each md file
-    async get_md_file_details(): Promise<void> {
-        // send an api request to github api and get the details of each md file
-        for (const item of this.items) {
-            const url = this.url + `/git/blobs/${item.sha}`
-            const headers = this.headers
-            const response = await fetch(url, { headers })
-            if (!response.ok) {
-                throw new Error(
-                    `Github API is unable to fetch the content of the md file: ${response.status}`
-                )
-            }
-            const data = await response.json()
-            console.log(`discovering details of ${item.path}`)
-            const decodedContent = this.decodeBase64(data.content)
-            this.md_files_content[item.path] = decodedContent
-        }
+    async get_file_content(): Promise<void> {
+        await this.get_md_files()
+        await this.get_md_file_details()
     }
 
     async create_branch(new_branch: string): Promise<void> {
@@ -91,12 +49,12 @@ export class Github_API {
 
         const create_ref_url = `${this.url}/git/refs`
         const create_ref_body = {
-            ref: `refs/heads/${new_branch}`,    
+            ref: `refs/heads/${new_branch}`,
             sha: sha,
         }
         const create_ref_response = await fetch(create_ref_url, {
             method: 'POST',
-            headers: this.getHeaders(),
+            headers: this.headers,
             body: JSON.stringify(create_ref_body),
         })
 
@@ -134,10 +92,17 @@ export class Github_API {
         console.log(`Pull request created: ${data.html_url}`)
     }
 
-    async update_file_content(index: number, content: string): Promise<void> {
-        const item = this.items[index]
+    async update_file_content(
+        file_path: string,
+        content: string,
+        branch_name: string
+    ): Promise<void> {
+        const item = this.items.find((item) => item.path === file_path)
+        if (!item) {
+            throw new Error(`File ${file_path} not found in the repository.`)
+        }
         const url = `${this.url}/contents/${item.path}`
-        const headers = this.getHeaders()
+        const headers = this.headers
         const sha = item.sha
         const encodedContent = this.encodeBase64(content)
 
@@ -151,7 +116,7 @@ export class Github_API {
                 message: `Update ${item.path}`,
                 content: encodedContent,
                 sha: sha,
-                branch: GITFIX_BRANCH,
+                branch: branch_name,
             }),
         })
 
@@ -159,7 +124,56 @@ export class Github_API {
             throw new Error(`Failed to update file content: ${response.status}`)
         }
 
-        this.updatedItems.push(index)
+        this.updatedItems.push(file_path)
+    }
+
+    // find md files in the repo
+    private async get_md_files(): Promise<void> {
+        // send an api request to github api and get the repo details
+        const url =
+            this.url +
+            `/git/trees/${this.repo_details.default_branch}?recursive=0`
+        const headers = this.headers
+        const response = await fetch(url, { headers })
+        if (!response.ok) {
+            throw new Error(
+                `Github API is unable to traverse through the repository : ${response.status}`
+            )
+        }
+        const data = await response.json()
+        console.log(data)
+        console.log(`discovering items in ${this.owner + '/' + this.repo}`)
+        // identify the md files in the repo
+        console.log(data.tree)
+        for (const item of data.tree) {
+            if (item.type === 'blob') {
+                let type = item.path.split('.').pop()
+                if (type == 'md' || type === 'mdx') {
+                    console.log(item.path)
+                    this.items.push({ path: item.path, sha: item.sha })
+                }
+            }
+        }
+        console.log(`discovered ${this.items.length} items`)
+    }
+
+    // get the content of each md file
+    private async get_md_file_details(): Promise<void> {
+        // send an api request to github api and get the details of each md file
+        for (const item of this.items) {
+            const url = this.url + `/git/blobs/${item.sha}`
+            const headers = this.headers
+            const response = await fetch(url, { headers })
+            if (!response.ok) {
+                throw new Error(
+                    `Github API is unable to fetch the content of the md file: ${response.status}`
+                )
+            }
+            const data = await response.json()
+            console.log(`discovering details of ${item.path}`)
+            const decodedContent = this.decodeBase64(data.content)
+            this.md_files_content[item.path] = decodedContent
+        }
     }
 
     // reposityory information
@@ -177,7 +191,7 @@ export class Github_API {
             Accept: 'application/vnd.github+json',
             Authorization: `Bearer ${this.auth}`,
             'X-GitHub-Api-Version': GITHUB_API_VERSION,
-        };
+        }
     }
 
     private encodeBase64(input: string): string {
