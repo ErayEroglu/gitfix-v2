@@ -1,59 +1,36 @@
-import { deleteSession, get } from '../../../lib/session-store'
-import getConfig from '../../../lib/config'
-import gitfix from '../../../lib/gitfix'
-import { NextResponse } from 'next/server'
+import { NextApiRequest, NextApiResponse } from 'next';
+import { Github_API } from '@/lib/github-api';
+import { generate_grammatically_correct_content } from '@//lib/grammar-correction';
 
-type Params = {
-    owner: string
-    repo: string
-}
+const handler = async (req: NextApiRequest, res: NextApiResponse) => {
+  try {
+    // Extract necessary data from the request body
+    const { owner, repo, auth, branch_name, pr_title, pr_body } = req.body;
 
-export async function GET(request: Request, context: { params: Params }) {
-    const encoder = new TextEncoder()
-    const { owner, repo } = context.params
-    let gitfixConfig
-
-    try {
-        gitfixConfig = await getConfig()
-    } catch (e) {
-        deleteSession()
-        return NextResponse.json(
-            { message: (e as Error).message },
-            {
-                status: 401,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Cache-Control': 'no-cache',
-                    'Access-Control-Allow-Credentials': 'true',
-                    'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Allow-Methods':
-                        'GET,OPTIONS,PATCH,DELETE,POST,PUT',
-                    'Access-Control-Allow-Headers':
-                        'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version',
-                },
-            }
-        )
+    if (!owner || !repo || !auth || !branch_name || !pr_title || !pr_body) {
+      return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    const customReadable = new ReadableStream({
-        async start(controller) {
-            for await (let chunk of gitfix(owner, repo, false, gitfixConfig)) {
-                const chunkData = encoder.encode(JSON.stringify(chunk))
-                controller.enqueue(chunkData)
-            }
-            controller.close()
-        },
-    })
+    // Initialize GitHub API
+    const github = new Github_API(owner, repo, auth);
+    await github.initializeRepoDetails();
 
-    return new Response(customReadable, {
-        headers: {
-            'Content-Type': 'text/html; charset=utf-8',
-            'Cache-Control': 'no-cache',
-            'Access-Control-Allow-Credentials': 'true',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET,OPTIONS,PATCH,DELETE,POST,PUT',
-            'Access-Control-Allow-Headers':
-                'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version',
-        },
-    })
-}
+    // Fetch and update Markdown files content
+    await github.get_file_content();
+    for (const file_path of Object.keys(github.md_files_content)) {
+      const original_content = github.md_files_content[file_path];
+      const corrected_content = await generate_grammatically_correct_content(original_content);
+      await github.update_file_content(file_path, corrected_content, branch_name);
+    }
+
+    // Create a pull request
+    await github.create_pull_request(pr_title, pr_body);
+
+    return res.status(200).json({ message: 'Pull request created successfully' });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error', error: (error as any).message });
+  }
+};
+
+export default handler;
