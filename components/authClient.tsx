@@ -8,6 +8,7 @@ const AuthClientComponent = () => {
     const { data: session } = useSession()
     const router = useRouter()
 
+    // if logged in, proceed to search page, else go to home page
     useEffect(() => {
         if (session) {
             router.push('/Search')
@@ -15,6 +16,6 @@ const AuthClientComponent = () => {
             router.push('/')
         }
     }, [session, router])
-    return null // This component does not render any UI
+    return null // no need to render anything
 }
 export default AuthClientComponent

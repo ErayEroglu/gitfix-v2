@@ -2,11 +2,11 @@ import { SessionProvider } from 'next-auth/react'
 import { ComponentType } from 'react'
 
 interface MyAppProps {
-  Component: ComponentType<any>
-  pageProps: {
-    session: any
-    [key: string]: any
-  }
+    Component: ComponentType<any>
+    pageProps: {
+        session: any
+        [key: string]: any
+    }
 }
 
 function MyApp({ Component, pageProps }: MyAppProps) {

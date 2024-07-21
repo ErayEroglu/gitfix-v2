@@ -41,7 +41,6 @@ const Search = () => {
                 const data = await response.json()
                 if (response.ok) {
                     console.log('Success:', data)
-                    router.push(`/actual_app?owner=${owner}&repo=${repo}`)
                 } else {
                     console.error('Error:', data)
                     alert(`Error: ${data.message}`)
@@ -51,8 +50,10 @@ const Search = () => {
                 alert('An unexpected error occurred.')
             }
         } else {
-            console.log(owner,repo,authToken)
-            alert('Please enter both owner and repository name, and ensure you are logged in.')
+            console.log(owner, repo, authToken)
+            alert(
+                'Please enter both owner and repository name, and ensure you are logged in.'
+            )
         }
     }
 
