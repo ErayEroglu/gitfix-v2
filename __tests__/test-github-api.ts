@@ -1,6 +1,6 @@
 import nock from 'nock'
-import { Github_API } from '../app/lib/github-api'
-import { getSessionId } from '../app/lib/github-session'
+import { Github_API } from '../lib/github-api'
+import { getSessionId } from '../lib/github-session'
 import dotenv from 'dotenv'
 dotenv.config()
 

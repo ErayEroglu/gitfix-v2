@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { createSession } from '../../../lib/session-store'
-import getConfig, { codeExchangeWithGitHub } from '../../../lib/config'
+import { createSession } from '../../../../lib/session-store'
+import getConfig, { codeExchangeWithGitHub } from '../../../../lib/config'
 
 export default async function callback(
     req: NextApiRequest,

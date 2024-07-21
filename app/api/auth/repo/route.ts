@@ -1,4 +1,4 @@
-import { get, set } from '../../../lib/session-store'
+import { get, set } from '../../../../lib/session-store'
 export const runtime = 'edge'
 
 export async function POST(req: any) {

@@ -1,6 +1,6 @@
-import { deleteSession, get } from '../../lib/session-store'
-import getConfig from '../../lib/config'
-import gitfix from '../../lib/gitfix'
+import { deleteSession, get } from '../../../lib/session-store'
+import getConfig from '../../../lib/config'
+import gitfix from '../../../lib/gitfix'
 import { NextResponse } from 'next/server'
 
 type Params = {
