@@ -22,18 +22,21 @@ export async function POST(request: Request) {
         const forked_repo_info = await github.forkRepository()
         const forkedOwner = forked_repo_info[0]
         const forkedRepo = forked_repo_info[1]
+        let flag : boolean = true
         // Fetch and update Markdown files content
         await github.get_file_content()
         for (const file_path of Object.keys(github.md_files_content)) {
             const original_content = github.md_files_content[file_path]
             const corrected_content =
-                await generate_grammatically_correct_content(original_content)
+            await generate_grammatically_correct_content(original_content)
             await github.updateFileContent(
-                file_path,
-                corrected_content,
-                forkedOwner,
-                forkedRepo
+            file_path,
+            corrected_content,
+            forkedOwner,
+            forkedRepo,
+            flag
             )
+            flag = false
         }
 
         // Create a pull request
@@ -48,7 +51,6 @@ export async function POST(request: Request) {
             forkedOwner,
             forkedRepo
         )
-        console.log('here')
         return NextResponse.json(
             { message: 'Pull request created successfully' },
             { status: 200 }

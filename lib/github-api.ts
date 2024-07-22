@@ -61,7 +61,8 @@ export class Github_API {
         filePath: string,
         content: string,
         forkedOwner: string,
-        forkedRepo: string
+        forkedRepo: string,
+        flag: boolean
     ): Promise<void> {
         const item = this.items.find((item) => item.path === filePath)
         if (!item) {
@@ -71,16 +72,18 @@ export class Github_API {
         const url = `https://api.github.com/repos/${forkedOwner}/${forkedRepo}/contents/${filePath}`
         const headers = this.headers
         const encodedContent = this.encodeBase64(content)
+        const branch = await this.setBranch(forkedOwner, flag)
+        const body = JSON.stringify({
+            message: `Update ${filePath}`,
+            content: encodedContent,
+            sha: item.sha,
+            branch: branch,
+        })
 
         const response = await fetch(url, {
             method: 'PUT',
             headers: headers,
-            body: JSON.stringify({
-                message: `Update ${filePath}`,
-                content: encodedContent,
-                sha: item.sha,
-                branch: 'main',
-            }),
+            body: body,
         })
 
         if (!response.ok) {
@@ -103,13 +106,13 @@ export class Github_API {
         const url = `https://api.github.com/repos/${this.owner}/${this.repo}/pulls`
         const headers = this.headers
         const defaultBranch = await this.getDefaultBranch(this.owner, this.repo)
-
+        const head = await this.setBranch(forkedOwner, false);
         const response = await fetch(url, {
             method: 'POST',
             headers: headers,
             body: JSON.stringify({
                 title: title,
-                head: `${forkedOwner}:main`,
+                head: `${forkedOwner}:${head}`,
                 base: defaultBranch,
                 body: body,
                 maintainer_can_modify: true,
@@ -122,6 +125,45 @@ export class Github_API {
 
         const data = await response.json()
         console.log(`Pull request created: ${data.html_url}`)
+    }
+
+    private async create_branch(new_branch: string): Promise<void> {
+        const url = `https://api.github.com/repos/${this.owner}/${this.repo}/git/refs`
+        const headers = {
+            'Authorization' : 'Bearer ' + GITHUB_TOKEN,
+            'Accept' : 'application/vnd.github+json', 
+            'Content-Type' : 'application/json' ,
+        }
+
+        const sha = await this.getDefaultBranchSha(this.owner, this.repo);
+       
+        const create_ref_body = {
+            ref: `refs/heads/${new_branch}`,
+            sha: sha,
+        }
+        const create_ref_response = await fetch(url, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(create_ref_body),
+        })
+
+        console.log('response', create_ref_response.json())
+        if (!create_ref_response.ok) {
+            throw new Error(
+                `Could not create branch: ${create_ref_response.status}`
+            )
+        }
+    }
+    private async setBranch(forkedOwner : string, flag : boolean) : Promise<string> {
+        if (forkedOwner === this.owner) {
+            if (flag) {
+                await this.create_branch("gitfix");
+            }
+            return "gitfix";
+        }
+        else {
+            return "main";
+        }
     }
 
     // find md files in the repo
