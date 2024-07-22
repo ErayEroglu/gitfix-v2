@@ -24,13 +24,13 @@ export class Github_API {
     }
 
     async initializeRepoDetails(): Promise<void> {
-        this.repo_details = await this.get_repo_details()
+        this.repo_details = await this.getRepoDetails()
     }
 
     // find the md files and extract the text
-    async get_file_content(): Promise<void> {
-        await this.get_md_files()
-        await this.get_md_file_details()
+    async getFileContent(): Promise<void> {
+        await this.getMdFiles()
+        await this.getMdFileDetails()
     }
 
     // fork the target repo
@@ -127,7 +127,7 @@ export class Github_API {
         console.log(`Pull request created: ${data.html_url}`)
     }
 
-    private async create_branch(new_branch: string): Promise<void> {
+    private async createBranch(new_branch: string): Promise<void> {
         const url = `https://api.github.com/repos/${this.owner}/${this.repo}/git/refs`
         const headers = {
             Authorization: 'Bearer ' + GITHUB_TOKEN,
@@ -154,6 +154,8 @@ export class Github_API {
         }
     }
 
+    // sets the branch to push the changes
+    // if the forked repo is the same as the target repo, it creates a new branch
     private async setBranch(
         forkedOwner: string,
         flag: boolean
@@ -161,7 +163,7 @@ export class Github_API {
         if (forkedOwner === this.owner) {
             if (flag) {
                 try {
-                    await this.create_branch('gitfix')
+                    await this.createBranch('gitfix')
                 } catch (error) {
                     console.log('Branch already exists')
                 }
@@ -172,9 +174,8 @@ export class Github_API {
         }
     }
 
-    // find md files in the repo
-    private async get_md_files(): Promise<void> {
-        // send an api request to github api and get the repo details
+    // finds md files in the repo
+    private async getMdFiles(): Promise<void> {
         const url =
             this.url +
             `/git/trees/${this.repo_details.default_branch}?recursive=0`
@@ -201,9 +202,8 @@ export class Github_API {
         console.log(`Discovered ${this.items.length} items`)
     }
 
-    // get the content of each md file
-    private async get_md_file_details(): Promise<void> {
-        // send an api request to github api and get the details of each md file
+    // get sthe content of each md file
+    private async getMdFileDetails(): Promise<void> {
         for (const item of this.items) {
             const url = this.url + `/git/blobs/${item.sha}`
             const headers = this.headers
@@ -261,7 +261,7 @@ export class Github_API {
     }
 
     // reposityory information
-    private async get_repo_details(): Promise<any> {
+    private async getRepoDetails(): Promise<any> {
         const headers = this.headers
         const response = await fetch(this.url, { headers })
         if (!response.ok) {

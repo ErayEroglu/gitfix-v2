@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { Github_API } from '@/lib/github-api'
-import { generate_grammatically_correct_content } from '@/lib/grammar-correction'
+import { generateGrammaticallyCorrectContent } from '@/lib/grammar-correction'
 import { addFixedFile, isFileFixed } from '@/lib/redis-utils'
 
 export async function POST(request: Request) {
@@ -17,25 +17,25 @@ export async function POST(request: Request) {
             )
         }
 
-        // Initialize GitHub API
         const github = new Github_API(owner, repo, auth)
         await github.initializeRepoDetails()
+
         const forked_repo_info = await github.forkRepository()
         const forkedOwner = forked_repo_info[0]
         const forkedRepo = forked_repo_info[1]
+        await github.getFileContent()
+        
         let flag: boolean = true
-        // Fetch and update Markdown files content
-        await github.get_file_content()
         let counter = 0
-        for (const file_path of Object.keys(github.md_files_content)) {
-            const is_fixed = await isFileFixed(
-                forkedOwner + '@' + forkedRepo + '@' + file_path
+        for (const filePath of Object.keys(github.md_files_content)) {
+            const isFixed = await isFileFixed(
+                forkedOwner + '@' + forkedRepo + '@' + filePath
             )
-            if (is_fixed) {
-                console.log(`File ${file_path} is already fixed, skipping...`)
+            if (isFixed) {
+                console.log(`File ${filePath} is already fixed, skipping...`)
                 continue
             }
-            console.log(`Fixing file: ${file_path}`)
+            console.log(`Fixing file: ${filePath}`)
             if (counter > 3) {
                 console.log(
                     'Max file limit reached, if you want to process more files, ' +
@@ -43,11 +43,11 @@ export async function POST(request: Request) {
                 )
                 break
             }
-            const original_content = github.md_files_content[file_path]
+            const original_content = github.md_files_content[filePath]
             const corrected_content =
-                await generate_grammatically_correct_content(original_content)
+                await generateGrammaticallyCorrectContent(original_content)
             await github.updateFileContent(
-                file_path,
+                filePath,
                 corrected_content,
                 forkedOwner,
                 forkedRepo,
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
             )
             flag = false
             counter++
-            await addFixedFile(forkedOwner + '@' + forkedRepo + '@' + file_path)
+            await addFixedFile(forkedOwner + '@' + forkedRepo + '@' + filePath)
         }
         if (counter === 0) {
             console.log('No files to fix')
@@ -68,15 +68,14 @@ export async function POST(request: Request) {
             )
         }
 
-        // Create a pull request
-        const pr_title = 'Fix grammatical errors in markdown files by Gitfix'
-        const pr_body =
+        const prTitle = 'Fix grammatical errors in markdown files by Gitfix'
+        const prBody =
             'This pull request fixes grammatical errors in the markdown files. ' +
             'Changes are made by Gitfix, which is an AI-powered application, ' +
             'aims to help developers in their daily tasks.'
         await github.createPullRequest(
-            pr_title,
-            pr_body,
+            prTitle,
+            prBody,
             forkedOwner,
             forkedRepo
         )

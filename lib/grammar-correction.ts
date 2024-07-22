@@ -1,6 +1,6 @@
 import OpenAI from 'openai'
 
-export async function generate_grammatically_correct_content(
+export async function generateGrammaticallyCorrectContent(
     file_content: string
 ): Promise<string> {
     if (file_content.length > 4e5) {
