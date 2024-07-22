@@ -1,8 +1,6 @@
 const GITHUB_API_VERSION = '2022-11-28'
-const RETRY_LIMIT = 50
-const RETRY_DELAY_MS = 10000
-const GITFIX_BRANCH = 'gitfix'
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN
+
 export class Github_API {
     owner: string
     repo: string
@@ -23,6 +21,7 @@ export class Github_API {
         this.md_files_content = {}
         this.url = `https://api.github.com/repos/${this.owner}/${this.repo}`
         this.headers = this.getHeaders()
+
     }
 
     async initializeRepoDetails(): Promise<void> {
@@ -34,47 +33,75 @@ export class Github_API {
         await this.get_md_file_details()
     }
 
-    async create_branch(new_branch: string): Promise<void> {
-        const url = `https://api.github.com/repos/${this.owner}/${this.repo}/git/refs`
-        const headers = {
-            'Authorization' : 'Bearer ' + GITHUB_TOKEN,
-            'Accept' : 'application/vnd.github+json', 
-            'Content-Type' : 'application/json' ,
-        }
-
-        const sha = await this.getDefaultBranchSha();
-       
-        const create_ref_body = {
-            ref: `refs/heads/${new_branch}`,
-            sha: sha,
-        }
-        const create_ref_response = await fetch(url, {
-            method: 'POST',
-            headers: headers,
-            body: JSON.stringify(create_ref_body),
-        })
-
-        if (!create_ref_response.ok) {
-            throw new Error(
-                `Could not create branch: ${create_ref_response.status}`
-            )
-        }
-    }
-
-    async create_pull_request(title: string, body: string): Promise<void> {
-        const url = `${this.url}/pulls`
+    async forkRepository(): Promise<any[]> {
+        const url = `https://api.github.com/repos/${this.owner}/${this.repo}/forks`
         const headers = this.headers
 
         const response = await fetch(url, {
             method: 'POST',
-            headers: {
-                ...headers,
-                'Content-Type': 'application/json',
-            },
+            headers: headers,
+        })
+
+        if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(
+                `Error forking repository: ${response.status} ${errorData.message}`
+            )
+        }
+        const data = await response.json();
+        const forkedOwner = data.owner.login;
+        const forkedRepo = data.name;
+
+        return ([forkedOwner , forkedRepo])
+    }
+
+    async updateFileContent(
+        filePath: string,
+        content: string,
+         forkedOwner : string, forkedRepo: string
+    ): Promise<void> {
+        const item = this.items.find((item) => item.path === filePath)
+        if (!item) {
+            throw new Error(`File ${filePath} not found in the repository.`)
+        }
+
+        const url = `https://api.github.com/repos/${forkedOwner}/${forkedRepo}/contents/${filePath}`
+        const headers = this.headers
+        const encodedContent = this.encodeBase64(content)
+
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: headers,
+            body: JSON.stringify({
+                message: `Update ${filePath}`,
+                content: encodedContent,
+                sha: item.sha,
+                branch: 'main',
+            }),
+        })
+
+        if (!response.ok) {
+            const errorText = await response.text()
+            throw new Error(
+                `Failed to update file content: ${response.status} - ${errorText}`
+            )
+        }
+
+        this.updatedItems.push(filePath)
+    }
+
+    async createPullRequest(title: string, body: string, forkedOwner : string, forkedRepo: string): Promise<void> {
+        const url = `https://api.github.com/repos/${this.owner}/${this.repo}/pulls`
+        const headers = this.headers
+        const defaultBranch = await this.getDefaultBranch(this.owner, this.repo)
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: headers,
             body: JSON.stringify({
                 title: title,
-                head: GITFIX_BRANCH,
-                base: this.repo_details.default_branch,
+                head: `${forkedOwner}:main`,
+                base: defaultBranch,
                 body: body,
                 maintainer_can_modify: true,
             }),
@@ -86,53 +113,6 @@ export class Github_API {
 
         const data = await response.json()
         console.log(`Pull request created: ${data.html_url}`)
-    }
-
-    async update_file_content(
-        file_path: string,
-        content: string,
-        branch_name: string
-    ): Promise<void> {
-        const item = this.items.find((item) => item.path === file_path)
-        if (!item) {
-            throw new Error(`File ${file_path} not found in the repository.`)
-        }
-        const url = `https://api.github.com/repos/${this.owner}/${this.repo}/contents/${file_path}`
-        const headers = {
-            Accept: 'application/vnd.github+json',
-            Authorization: `Bearer ${GITHUB_TOKEN}`,
-            'X-GitHub-Api-Version': GITHUB_API_VERSION,
-            'Content-Type' : 'application/json',
-        }
-        const sha = item.sha
-        const encodedContent = this.encodeBase64(content)
-
-        try {
-            const response = await fetch(url, {
-                method: 'PUT',
-                headers: headers,
-                body: JSON.stringify({
-                    message: `Update ${file_path}`,
-                    content: encodedContent,
-                    sha: sha,
-                    branch: branch_name,
-                }),
-            })
-
-            if (!response.ok) {
-                const errorText = await response.text()
-                throw new Error(
-                    `Failed to update file content: ${response.status} - ${errorText}`
-                )
-            }
-
-            this.updatedItems.push(file_path)
-        } catch (error) {
-            console.error(
-                `Error occurred while updating file content: ${(error as Error).message}`
-            )
-            throw error
-        }
     }
 
     // find md files in the repo
@@ -184,23 +164,36 @@ export class Github_API {
         }
     }
 
-    private async getDefaultBranchSha(): Promise<string> {
-        const url = `https://api.github.com/repos/${this.owner}/${this.repo}/git/refs/heads/main`; 
-        const headers = {
-            'Authorization': `Bearer ${GITHUB_TOKEN}`,
-            'Accept': 'application/vnd.github+json',
-        };
-    
-        const response = await fetch(url, { headers });
+    private async getDefaultBranchSha(owner : string, repo : string): Promise<string> {
+        const url = `https://api.github.com/repos/${owner}/${repo}/git/refs/heads/main`
+        const headers = this.headers
+        const response = await fetch(url, { ...headers, 'Content-Type': 'application/json'})
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`Error fetching default branch SHA: ${response.status} ${errorData.message}`);
+            const errorData = await response.json()
+            throw new Error(
+                `Error fetching default branch SHA: ${response.status} ${errorData.message}`
+            )
         }
-    
-        const data = await response.json();
-        return data.object.sha;
+
+        const data = await response.json()
+        return data.object.sha
     }
-    
+
+    private async getDefaultBranch(owner : string, repo : string): Promise<string> {
+        const url = `https://api.github.com/repos/${owner}/${repo}`
+        const headers = this.headers
+
+        const response = await fetch(url, { headers })
+        if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(
+                `Error fetching default branch: ${response.status} ${errorData.message}`
+            )
+        }
+
+        const data = await response.json()
+        return data.default_branch
+    }
 
     // reposityory information
     private async get_repo_details(): Promise<any> {
@@ -215,7 +208,7 @@ export class Github_API {
     private getHeaders() {
         return {
             Accept: 'application/vnd.github+json',
-            Authorization: `Bearer ${this.auth}`,
+            Authorization: `Bearer ${GITHUB_TOKEN}`,
             'X-GitHub-Api-Version': GITHUB_API_VERSION,
         }
     }

@@ -20,22 +20,24 @@ export async function POST(request: Request) {
         // Initialize GitHub API
         const github = new Github_API(owner, repo, auth)
         await github.initializeRepoDetails()
-        await github.create_branch(branch_name)
+        const forked_repo_info = await github.forkRepository()
+        const forkedOwner = forked_repo_info[0]
+        const forkedRepo = forked_repo_info[1]
         // Fetch and update Markdown files content
         await github.get_file_content()
         for (const file_path of Object.keys(github.md_files_content)) {
             const original_content = github.md_files_content[file_path]
             const corrected_content =
                 await generate_grammatically_correct_content(original_content)
-            await github.update_file_content(
+            await github.updateFileContent(
                 file_path,
                 corrected_content,
-                branch_name
+                 forkedOwner, forkedRepo
             )
         }
 
         // Create a pull request
-        await github.create_pull_request(pr_title, pr_body)
+        await github.createPullRequest(pr_title, pr_body, forkedOwner, forkedRepo)
         console.log('here')
         return NextResponse.json(
             { message: 'Pull request created successfully' },
