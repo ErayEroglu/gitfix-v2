@@ -45,9 +45,6 @@ export async function generate_grammatically_correct_content(
             temperature: 0,
         })
 
-        // Log the API response for debugging
-        console.log('API response:', completion)
-
         const response = completion.choices[0]?.message?.content
 
         if (!response) {

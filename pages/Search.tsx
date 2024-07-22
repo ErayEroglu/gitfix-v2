@@ -13,7 +13,6 @@ const Search = () => {
     const { data: session } = useSession()
 
     useEffect(() => {
-        console.log('Session:', session)
         if (session) {
             setAuthToken(session.accessToken as string)
         }
@@ -32,15 +31,12 @@ const Search = () => {
                         owner,
                         repo,
                         auth: authToken,
-                        branch_name: branchName,
-                        pr_title: prTitle,
-                        pr_body: prBody,
                     }),
                 })
 
                 const data = await response.json()
                 if (response.ok) {
-                    console.log('Success:', data)
+                    console.log('Success: The pull request has been created.')
                 } else {
                     console.error('Error:', data)
                     alert(`Error: ${data.message}`)
@@ -87,27 +83,6 @@ const Search = () => {
                     placeholder="Repository"
                     value={repo}
                     onChange={(e) => setRepo(e.target.value)}
-                    style={{ margin: '10px', padding: '10px', width: '300px' }}
-                />
-                <input
-                    type="text"
-                    placeholder="Branch Name"
-                    value={branchName}
-                    onChange={(e) => setBranchName(e.target.value)}
-                    style={{ margin: '10px', padding: '10px', width: '300px' }}
-                />
-                <input
-                    type="text"
-                    placeholder="Pull Request Title"
-                    value={prTitle}
-                    onChange={(e) => setPrTitle(e.target.value)}
-                    style={{ margin: '10px', padding: '10px', width: '300px' }}
-                />
-                <input
-                    type="text"
-                    placeholder="Pull Request Body"
-                    value={prBody}
-                    onChange={(e) => setPrBody(e.target.value)}
                     style={{ margin: '10px', padding: '10px', width: '300px' }}
                 />
                 <button

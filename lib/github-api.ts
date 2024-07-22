@@ -21,18 +21,19 @@ export class Github_API {
         this.md_files_content = {}
         this.url = `https://api.github.com/repos/${this.owner}/${this.repo}`
         this.headers = this.getHeaders()
-
     }
 
     async initializeRepoDetails(): Promise<void> {
         this.repo_details = await this.get_repo_details()
     }
 
+    // find the md files and extract the text
     async get_file_content(): Promise<void> {
         await this.get_md_files()
         await this.get_md_file_details()
     }
 
+    // fork the target repo
     async forkRepository(): Promise<any[]> {
         const url = `https://api.github.com/repos/${this.owner}/${this.repo}/forks`
         const headers = this.headers
@@ -48,17 +49,19 @@ export class Github_API {
                 `Error forking repository: ${response.status} ${errorData.message}`
             )
         }
-        const data = await response.json();
-        const forkedOwner = data.owner.login;
-        const forkedRepo = data.name;
+        const data = await response.json()
+        const forkedOwner = data.owner.login
+        const forkedRepo = data.name
 
-        return ([forkedOwner , forkedRepo])
+        return [forkedOwner, forkedRepo]
     }
 
+    // update the content of the md files and upload it to the forked repo
     async updateFileContent(
         filePath: string,
         content: string,
-         forkedOwner : string, forkedRepo: string
+        forkedOwner: string,
+        forkedRepo: string
     ): Promise<void> {
         const item = this.items.find((item) => item.path === filePath)
         if (!item) {
@@ -90,7 +93,13 @@ export class Github_API {
         this.updatedItems.push(filePath)
     }
 
-    async createPullRequest(title: string, body: string, forkedOwner : string, forkedRepo: string): Promise<void> {
+    // send a pr to the target repo
+    async createPullRequest(
+        title: string,
+        body: string,
+        forkedOwner: string,
+        forkedRepo: string
+    ): Promise<void> {
         const url = `https://api.github.com/repos/${this.owner}/${this.repo}/pulls`
         const headers = this.headers
         const defaultBranch = await this.getDefaultBranch(this.owner, this.repo)
@@ -129,15 +138,12 @@ export class Github_API {
             )
         }
         const data = await response.json()
-        console.log(data)
         console.log(`discovering items in ${this.owner + '/' + this.repo}`)
         // identify the md files in the repo
-        console.log(data.tree)
         for (const item of data.tree) {
             if (item.type === 'blob') {
                 let type = item.path.split('.').pop()
                 if (type == 'md' || type === 'mdx') {
-                    console.log(item.path)
                     this.items.push({ path: item.path, sha: item.sha })
                 }
             }
@@ -164,10 +170,16 @@ export class Github_API {
         }
     }
 
-    private async getDefaultBranchSha(owner : string, repo : string): Promise<string> {
+    private async getDefaultBranchSha(
+        owner: string,
+        repo: string
+    ): Promise<string> {
         const url = `https://api.github.com/repos/${owner}/${repo}/git/refs/heads/main`
         const headers = this.headers
-        const response = await fetch(url, { ...headers, 'Content-Type': 'application/json'})
+        const response = await fetch(url, {
+            ...headers,
+            'Content-Type': 'application/json',
+        })
         if (!response.ok) {
             const errorData = await response.json()
             throw new Error(
@@ -179,7 +191,10 @@ export class Github_API {
         return data.object.sha
     }
 
-    private async getDefaultBranch(owner : string, repo : string): Promise<string> {
+    private async getDefaultBranch(
+        owner: string,
+        repo: string
+    ): Promise<string> {
         const url = `https://api.github.com/repos/${owner}/${repo}`
         const headers = this.headers
 

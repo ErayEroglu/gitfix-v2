@@ -7,10 +7,9 @@ export async function POST(request: Request) {
         console.log('Received request to fix markdown files')
 
         // Parse the JSON request body
-        const { owner, repo, auth, branch_name, pr_title, pr_body } =
-            await request.json()
+        const { owner, repo, auth } = await request.json()
 
-        if (!owner || !repo || !auth || !branch_name || !pr_title || !pr_body) {
+        if (!owner || !repo || !auth) {
             return NextResponse.json(
                 { message: 'Missing required fields' },
                 { status: 400 }
@@ -32,12 +31,23 @@ export async function POST(request: Request) {
             await github.updateFileContent(
                 file_path,
                 corrected_content,
-                 forkedOwner, forkedRepo
+                forkedOwner,
+                forkedRepo
             )
         }
 
         // Create a pull request
-        await github.createPullRequest(pr_title, pr_body, forkedOwner, forkedRepo)
+        const pr_title = 'Fix grammatical errors in markdown files by Gitfix'
+        const pr_body =
+            'This pull request fixes grammatical errors in the markdown files. ' +
+            'Changes are made by Gitfix, which is an AI-powered application, ' +
+            'aims to help developers in their daily tasks.'
+        await github.createPullRequest(
+            pr_title,
+            pr_body,
+            forkedOwner,
+            forkedRepo
+        )
         console.log('here')
         return NextResponse.json(
             { message: 'Pull request created successfully' },
