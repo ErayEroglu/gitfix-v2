@@ -106,7 +106,7 @@ export class Github_API {
         const url = `https://api.github.com/repos/${this.owner}/${this.repo}/pulls`
         const headers = this.headers
         const defaultBranch = await this.getDefaultBranch(this.owner, this.repo)
-        const head = await this.setBranch(forkedOwner, false);
+        const head = await this.setBranch(forkedOwner, false)
         const response = await fetch(url, {
             method: 'POST',
             headers: headers,
@@ -130,13 +130,13 @@ export class Github_API {
     private async create_branch(new_branch: string): Promise<void> {
         const url = `https://api.github.com/repos/${this.owner}/${this.repo}/git/refs`
         const headers = {
-            'Authorization' : 'Bearer ' + GITHUB_TOKEN,
-            'Accept' : 'application/vnd.github+json', 
-            'Content-Type' : 'application/json' ,
+            Authorization: 'Bearer ' + GITHUB_TOKEN,
+            Accept: 'application/vnd.github+json',
+            'Content-Type': 'application/json',
         }
 
-        const sha = await this.getDefaultBranchSha(this.owner, this.repo);
-       
+        const sha = await this.getDefaultBranchSha(this.owner, this.repo)
+
         const create_ref_body = {
             ref: `refs/heads/${new_branch}`,
             sha: sha,
@@ -147,22 +147,28 @@ export class Github_API {
             body: JSON.stringify(create_ref_body),
         })
 
-        console.log('response', create_ref_response.json())
         if (!create_ref_response.ok) {
             throw new Error(
                 `Could not create branch: ${create_ref_response.status}`
             )
         }
     }
-    private async setBranch(forkedOwner : string, flag : boolean) : Promise<string> {
+
+    private async setBranch(
+        forkedOwner: string,
+        flag: boolean
+    ): Promise<string> {
         if (forkedOwner === this.owner) {
             if (flag) {
-                await this.create_branch("gitfix");
+                try {
+                    await this.create_branch('gitfix')
+                } catch (error) {
+                    console.log('Branch already exists')
+                }
             }
-            return "gitfix";
-        }
-        else {
-            return "main";
+            return 'gitfix'
+        } else {
+            return 'main'
         }
     }
 
@@ -180,7 +186,9 @@ export class Github_API {
             )
         }
         const data = await response.json()
-        console.log(`discovering items in ${this.owner + '/' + this.repo}`)
+        console.log(
+            `Searching for markdown files in ${this.owner + '/' + this.repo}`
+        )
         // identify the md files in the repo
         for (const item of data.tree) {
             if (item.type === 'blob') {
@@ -190,7 +198,7 @@ export class Github_API {
                 }
             }
         }
-        console.log(`discovered ${this.items.length} items`)
+        console.log(`Discovered ${this.items.length} items`)
     }
 
     // get the content of each md file
@@ -206,7 +214,7 @@ export class Github_API {
                 )
             }
             const data = await response.json()
-            console.log(`discovering details of ${item.path}`)
+            console.log(`Extracting the contents of ${item.path}`)
             const decodedContent = this.decodeBase64(data.content)
             this.md_files_content[item.path] = decodedContent
         }
