@@ -62,7 +62,7 @@ export async function POST(request: Request) {
             return NextResponse.json(
                 {
                     message:
-                        'There is not any markdown file, or all of them are already fixed',
+                        'There is not any markdown file, or all of them are already fixed.',
                 },
                 { status: 200 }
             )

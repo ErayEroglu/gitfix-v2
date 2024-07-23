@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
-import { useSession } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
 
 const Search = () => {
     const [owner, setOwner] = useState('')
     const [repo, setRepo] = useState('')
     const [authToken, setAuthToken] = useState('')
-    const [branchName, setBranchName] = useState('your-branch-name')
-    const [prTitle, setPrTitle] = useState('Your Pull Request Title')
-    const [prBody, setPrBody] = useState('Your Pull Request Body')
+    const [isLoading, setIsLoading] = useState(false)
+    const [message, setMessage] = useState('')
+    const [color, setColor] = useState('')
     const router = useRouter()
     const { data: session } = useSession()
 
@@ -21,6 +21,8 @@ const Search = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (owner && repo && authToken) {
+            setIsLoading(true)
+            setMessage('')
             try {
                 const response = await fetch('/api/gitfix', {
                     method: 'POST',
@@ -36,18 +38,21 @@ const Search = () => {
 
                 const data = await response.json()
                 if (response.ok) {
-                    console.log('Success: The pull request has been created.')
+                    setColor('green')
+                    setMessage(data.message)
                 } else {
                     console.error('Error:', data)
-                    alert(`Error: ${data.message}`)
+                    setMessage(`Error: ${data.message}`)
                 }
             } catch (error) {
+                setColor('red')
                 console.error('Error:', error)
-                alert('An unexpected error occurred.')
+                setMessage('An unexpected error occurred.')
+            } finally {
+                setIsLoading(false)
             }
         } else {
-            console.log(owner, repo, authToken)
-            alert(
+            setMessage(
                 'Please enter both owner and repository name, and ensure you are logged in.'
             )
         }
@@ -88,10 +93,22 @@ const Search = () => {
                 <button
                     type="submit"
                     style={{ padding: '10px 20px', marginTop: '20px' }}
+                    disabled={isLoading}
                 >
-                    Proceed
+                    {isLoading ? 'Processing...' : 'Proceed'}
                 </button>
             </form>
+            {message && (
+                <p style={{ marginTop: '20px', color: isLoading ? 'blue' : color }}>
+                    {message}
+                </p>
+            )}
+            <button
+                onClick={() => signOut({ callbackUrl: '/' })}
+                style={{ padding: '10px 20px', marginTop: '20px' }}
+            >
+                Log Out
+            </button>
         </div>
     )
 }
