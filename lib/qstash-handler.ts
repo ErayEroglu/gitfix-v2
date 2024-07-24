@@ -6,7 +6,7 @@ export async function handleQStashCallback(data: any) {
     const { owner, repo, auth, taskId } = data
 
     if (!owner || !repo || !auth) {
-        throw new Error('Missing required fields')
+        throw new Error('Missing required fields !!!')
     }
 
     const github = new Github_API(owner, repo, auth)
