@@ -5,12 +5,14 @@ import { addFixedFile, isFileFixed } from '@/lib/redis-utils';
 
 export async function POST(request: NextRequest) {
     try {
-        console.log('Received request to fix markdown files');
+        console.log('Received callback request from QStash');
 
         // Parse the JSON request body
-        const { owner, repo, auth } = await request.json();
+        const body = await request.json();
+        const { owner, repo, auth } = body;
 
         if (!owner || !repo || !auth) {
+            console.error('Missing required fields:', { owner, repo, auth });
             return NextResponse.json(
                 { message: 'Missing required fields' },
                 { status: 400 }
