@@ -23,6 +23,7 @@ export async function POST(request: Request) {
         const result = await client.publishJSON({
             api: { name: "llm", provider: openai({token : process.env.OPENAI_API_KEY as string}) },
             body: {
+                model: 'gpt-4-turbo-preview',
                 owner,
                 repo,
                 auth,
