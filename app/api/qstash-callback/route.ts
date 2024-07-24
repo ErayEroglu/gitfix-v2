@@ -1,84 +1,51 @@
-import { NextResponse, NextRequest } from 'next/server';
+import { NextApiRequest, NextApiResponse } from 'next';
 import { Github_API } from '@/lib/github-api';
-import { generateGrammaticallyCorrectContent } from '@/lib/grammar-correction';
 import { addFixedFile, isFileFixed } from '@/lib/redis-utils';
 
-export async function POST(request: NextRequest) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     try {
-        console.log('Received callback request from QStash');
+        const { filePath, fileContent, owner, repo, auth, corrections } = req.body;
 
-        // Parse the JSON request body
-        const body = await request.json();
-        const { owner, repo, auth } = body;
-
-        if (!owner || !repo || !auth) {
-            console.error('Missing required fields:', { owner, repo, auth });
-            return NextResponse.json(
-                { message: 'Missing required fields' },
-                { status: 400 }
-            );
+        // Ensure all required fields are present
+        if (!filePath || !fileContent || !owner || !repo || !auth || !corrections) {
+            return res.status(400).json({ message: 'Missing required fields' });
         }
 
+        let parsedCorrections;
+        try {
+            parsedCorrections = JSON.parse(corrections).corrections;
+        } catch (parseError: any) {
+            throw new Error(`Failed to parse JSON response: ${parseError.message}`);
+        }
+
+        let updatedContent = fileContent;
+        for (let i = 0; i < parsedCorrections.length; i++) {
+            const { original_line, correction } = parsedCorrections[i];
+            const contentIndex = updatedContent.indexOf(original_line);
+            if (contentIndex === -1) {
+                console.log('Original line missing:', original_line);
+                continue;
+            }
+            const contentIndexEnd = contentIndex + original_line.length;
+            updatedContent =
+                updatedContent.substring(0, contentIndex) +
+                correction +
+                updatedContent.substring(contentIndexEnd);
+        }
+
+        // Initialize GitHub API
         const github = new Github_API(owner, repo, auth);
         await github.initializeRepoDetails();
 
-        const forkedRepoInfo = await github.forkRepository();
-        const forkedOwner = forkedRepoInfo[0];
-        const forkedRepo = forkedRepoInfo[1];
-        await github.getFileContent();
+        // Update file content in the GitHub repository
+        await github.updateFileContent(filePath, updatedContent, owner, repo, false);
+        
+        // Mark file as fixed
+        await addFixedFile(`${owner}@${repo}@${filePath}`);
 
-        let flag = true;
-        let counter = 0;
-        for (const filePath of Object.keys(github.md_files_content)) {
-            const isFixed = await isFileFixed(`${forkedOwner}@${forkedRepo}@${filePath}`);
-            if (isFixed) {
-                console.log(`File ${filePath} is already fixed, skipping...`);
-                continue;
-            }
-            console.log(`Fixing file: ${filePath}`);
-            if (counter > 3) {
-                console.log(
-                    'Max file limit reached, if you want to process more files, please run the app again.'
-                );
-                break;
-            }
-            const originalContent = github.md_files_content[filePath];
-            const correctedContent = await generateGrammaticallyCorrectContent(originalContent);
-            await github.updateFileContent(
-                filePath,
-                correctedContent,
-                forkedOwner,
-                forkedRepo,
-                flag
-            );
-            flag = false;
-            counter++;
-            await addFixedFile(`${forkedOwner}@${forkedRepo}@${filePath}`);
-        }
-        if (counter === 0) {
-            console.log('No files to fix');
-            return NextResponse.json(
-                {
-                    message: 'There are no markdown files, or all of them are already fixed.',
-                },
-                { status: 200 }
-            );
-        }
-
-        const prTitle = 'Fix grammatical errors in markdown files by Gitfix';
-        const prBody = 'This pull request fixes grammatical errors in the markdown files. ' +
-            'Changes are made by Gitfix, which is an AI-powered application, ' +
-            'aims to help developers in their daily tasks.';
-        await github.createPullRequest(prTitle, prBody, forkedOwner, forkedRepo);
-        return NextResponse.json(
-            { message: 'Pull request created successfully' },
-            { status: 200 }
-        );
+        res.status(200).json({ message: 'File updated successfully' });
     } catch (error) {
-        console.error('Error handling callback:', error);
-        return NextResponse.json(
-            { message: 'Internal server error', error: (error as any).message },
-            { status: 500 }
-        );
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error', error: (error as any).message });
     }
 }
