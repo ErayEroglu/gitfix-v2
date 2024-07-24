@@ -1,14 +1,16 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+// src/app/api/qstash-callback/route.ts
+
+import { NextResponse } from 'next/server';
 import { Github_API } from '@/lib/github-api';
 import { addFixedFile, isFileFixed } from '@/lib/redis-utils';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export async function POST(request: Request) {
     try {
-        const { filePath, fileContent, owner, repo, auth, corrections } = req.body;
+        const { filePath, fileContent, owner, repo, auth, corrections } = await request.json();
 
         // Ensure all required fields are present
         if (!filePath || !fileContent || !owner || !repo || !auth || !corrections) {
-            return res.status(400).json({ message: 'Missing required fields' });
+            return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
         }
 
         let parsedCorrections;
@@ -43,9 +45,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Mark file as fixed
         await addFixedFile(`${owner}@${repo}@${filePath}`);
 
-        res.status(200).json({ message: 'File updated successfully' });
+        return NextResponse.json({ message: 'File updated successfully' }, { status: 200 });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Internal server error', error: (error as any).message });
+        return NextResponse.json({ message: 'Internal server error', error: (error as Error).message }, { status: 500 });
     }
 }
