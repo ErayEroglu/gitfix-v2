@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
-import { Github_API } from '@/lib/github-api'
-import { generateGrammaticallyCorrectContent } from '@/lib/grammar-correction'
-import { addFixedFile, isFileFixed } from '@/lib/redis-utils'
+import { Client, openai } from '@upstash/qstash'
+import { v4 as uuidv4 } from 'uuid'
+
+const client = new Client({
+    token: process.env.QSTASH_TOKEN as string,
+})
 
 export async function POST(request: Request) {
     try {
@@ -17,70 +20,23 @@ export async function POST(request: Request) {
             )
         }
 
-        const github = new Github_API(owner, repo, auth)
-        await github.initializeRepoDetails()
+        // Publish the task to QStash
+        const taskId = uuidv4()
+        const result = await client.publishJSON({
+            api: { name: "llm", provider: openai({token : process.env.OPENAI_API_KEY as string}) },
+            body: {
+                taskId,
+                owner,
+                repo,
+                auth,
+            },
+            callback: `${process.env.NEXTAUTH_URL}/api/qstash-callback`,
+        })
 
-        const forked_repo_info = await github.forkRepository()
-        const forkedOwner = forked_repo_info[0]
-        const forkedRepo = forked_repo_info[1]
-        await github.getFileContent()
-        
-        let flag: boolean = true
-        let counter = 0
-        for (const filePath of Object.keys(github.md_files_content)) {
-            const isFixed = await isFileFixed(
-                forkedOwner + '@' + forkedRepo + '@' + filePath
-            )
-            if (isFixed) {
-                console.log(`File ${filePath} is already fixed, skipping...`)
-                continue
-            }
-            console.log(`Fixing file: ${filePath}`)
-            if (counter > 3) {
-                console.log(
-                    'Max file limit reached, if you want to process more files, ' +
-                        'please run the app again.'
-                )
-                break
-            }
-            const original_content = github.md_files_content[filePath]
-            const corrected_content =
-                await generateGrammaticallyCorrectContent(original_content)
-            await github.updateFileContent(
-                filePath,
-                corrected_content,
-                forkedOwner,
-                forkedRepo,
-                flag
-            )
-            flag = false
-            counter++
-            await addFixedFile(forkedOwner + '@' + forkedRepo + '@' + filePath)
-        }
-        if (counter === 0) {
-            console.log('No files to fix')
-            return NextResponse.json(
-                {
-                    message:
-                        'There is not any markdown file, or all of them are already fixed.',
-                },
-                { status: 200 }
-            )
-        }
+        console.log(result)
 
-        const prTitle = 'Fix grammatical errors in markdown files by Gitfix'
-        const prBody =
-            'This pull request fixes grammatical errors in the markdown files. ' +
-            'Changes are made by Gitfix, which is an AI-powered application, ' +
-            'aims to help developers in their daily tasks.'
-        await github.createPullRequest(
-            prTitle,
-            prBody,
-            forkedOwner,
-            forkedRepo
-        )
         return NextResponse.json(
-            { message: 'Pull request created successfully' },
+            { message: 'Task published to QStash successfully', taskId },
             { status: 200 }
         )
     } catch (error) {
