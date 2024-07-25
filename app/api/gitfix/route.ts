@@ -98,7 +98,6 @@ import { NextResponse } from 'next/server'
 import { Github_API } from '@/lib/github-api'
 import { addFixedFile, isFileFixed } from '@/lib/redis-utils'
 import { publishGrammarCorrectionJob } from '@/lib/qstash-utils' // Assume you put the QStash logic here
-import { PublishToApiResponse } from '@upstash/qstash'
 
 export async function POST(request: Request) {
     try {
@@ -117,15 +116,15 @@ export async function POST(request: Request) {
         const github = new Github_API(owner, repo, auth)
         await github.initializeRepoDetails()
 
-        const forked_repo_info = await github.forkRepository()
-        const forkedOwner = forked_repo_info[0]
-        const forkedRepo = forked_repo_info[1]
+        const forkedRepoInfo = await github.forkRepository()
+        const forkedOwner = forkedRepoInfo[0]
+        const forkedRepo = forkedRepoInfo[1]
         await github.getFileContent()
 
         let counter = 0
         for (const filePath of Object.keys(github.md_files_content)) {
             const isFixed = await isFileFixed(
-                forkedOwner + '@' + forkedRepo + '@' + filePath
+                `${forkedOwner}@${forkedRepo}@${filePath}`
             )
             if (isFixed) {
                 console.log(`File ${filePath} is already fixed, skipping...`)
@@ -141,8 +140,7 @@ export async function POST(request: Request) {
             }
 
             const originalContent = github.md_files_content[filePath]
-            const callbackUrl =
-                process.env.NEXTAUTH_URL + `/api/qstash-callback` // Update with your actual callback URL
+            const callbackUrl = `${process.env.NEXTAUTH_URL}/api/qstash-callback`
             const response = await publishGrammarCorrectionJob(
                 filePath,
                 originalContent,
@@ -155,7 +153,8 @@ export async function POST(request: Request) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ filePath, originalContent }),
             })
-            const { corrections } = await callbackResponse.json()
+            const callbackJson = await callbackResponse.json()
+            const { corrections } = callbackJson
 
             let updatedContent = github.md_files_content[filePath]
             for (let i = 0; i < corrections.length; i++) {
@@ -172,20 +171,17 @@ export async function POST(request: Request) {
                     updatedContent.substring(contentIndexEnd)
             }
 
-            // Initialize GitHub API
-            await github.initializeRepoDetails()
-
             // Update file content in the GitHub repository
             await github.updateFileContent(
                 filePath,
                 updatedContent,
-                owner,
-                repo,
+                forkedOwner,
+                forkedRepo,
                 false
             )
 
             // Mark file as fixed
-            await addFixedFile(`${owner}@${repo}@${filePath}`)
+            await addFixedFile(`${forkedOwner}@${forkedRepo}@${filePath}`)
             counter++
         }
 
@@ -205,7 +201,7 @@ export async function POST(request: Request) {
             { status: 200 }
         )
     } catch (error) {
-        console.error(error)
+        console.error('Error handling callback:', error)
         return NextResponse.json(
             { message: 'Internal server error', error: (error as any).message },
             { status: 500 }

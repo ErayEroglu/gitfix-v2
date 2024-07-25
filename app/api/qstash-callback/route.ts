@@ -1,43 +1,29 @@
 // src/app/api/qstash-callback/route.ts
-
 import { NextResponse } from 'next/server'
-import { Github_API } from '@/lib/github-api'
-import { addFixedFile, isFileFixed } from '@/lib/redis-utils'
 import base64 from 'base-64'
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
     try {
-        const body = await request.text()
-        // Decode the base64 string
-        const decodedBody = base64.decode(body)
-        // Parse the JSON content
-        const requestBody = JSON.parse(decodedBody)
-        const { choices } = requestBody
-        const correctedContent = choices[0]?.message?.content
-        let parsedCorrections
-        try {
-            parsedCorrections = JSON.parse(correctedContent).corrections
-        } catch (parseError: any) {
-            throw new Error(
-                `Failed to parse JSON response: ${parseError.message}`
-            )
-        }
-
-        return NextResponse.json(
-            { corrections: parsedCorrections },
-            { status: 200 }
-        )
+      const body = await req.text();
+      const decodedBody = JSON.parse(Buffer.from(body, 'base64').toString());
+      const corrections = decodedBody.choices.map((choice: any) => choice.message.content);
+      
+      // Process the corrections further if needed
+      console.log('Corrections:', corrections);
+      
+      return new Response(JSON.stringify({ success: true, corrections }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
     } catch (error) {
-        console.error(error)
-        return NextResponse.json(
-            {
-                message: 'Internal server error',
-                error: (error as Error).message,
-            },
-            { status: 500 }
-        )
+      console.error('Error processing callback:', error);
+      return new Response(JSON.stringify({ success: false, error: error}), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
-}
+  }
+  
 
 // let updatedContent = fileContent;
 // for (let i = 0; i < parsedCorrections.length; i++) {
