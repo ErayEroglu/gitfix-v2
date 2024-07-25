@@ -97,9 +97,12 @@
 import { NextResponse } from 'next/server'
 import { Github_API } from '@/lib/github-api'
 import { addFixedFile, isFileFixed } from '@/lib/redis-utils'
-import { publishGrammarCorrectionJob } from '@/lib/qstash-utils' // Assume you put the QStash logic here
+import { Client, openai, upstash } from '@upstash/qstash'
+import OpenAI from 'openai'
+import { NextApiRequest, NextApiResponse } from 'next'
+import { REPLCommand } from 'repl'
 
-export async function POST(request: Request) {
+export async function GET(request: Request) {
     try {
         console.log('Received request to fix markdown files')
 
@@ -116,15 +119,16 @@ export async function POST(request: Request) {
         const github = new Github_API(owner, repo, auth)
         await github.initializeRepoDetails()
 
-        const forkedRepoInfo = await github.forkRepository()
-        const forkedOwner = forkedRepoInfo[0]
-        const forkedRepo = forkedRepoInfo[1]
+        const forked_repo_info = await github.forkRepository()
+        const forkedOwner = forked_repo_info[0]
+        const forkedRepo = forked_repo_info[1]
         await github.getFileContent()
 
+        let flag: boolean = true
         let counter = 0
         for (const filePath of Object.keys(github.md_files_content)) {
             const isFixed = await isFileFixed(
-                `${forkedOwner}@${forkedRepo}@${filePath}`
+                forkedOwner + '@' + forkedRepo + '@' + filePath
             )
             if (isFixed) {
                 console.log(`File ${filePath} is already fixed, skipping...`)
@@ -138,53 +142,11 @@ export async function POST(request: Request) {
                 )
                 break
             }
-
             const originalContent = github.md_files_content[filePath]
-            const callbackUrl = `${process.env.NEXTAUTH_URL}/api/qstash-callback`
-            const response = await publishGrammarCorrectionJob(
-                filePath,
-                originalContent,
-                callbackUrl
-            )
+            await publishIntoQStash(originalContent, filePath, owner, repo, auth, forkedOwner, forkedRepo)
 
-            // Fetch the response from the callback URL
-            const callbackResponse = await fetch(callbackUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ filePath, originalContent }),
-            })
-            const callbackJson = await callbackResponse.json()
-            const { corrections } = callbackJson
-
-            let updatedContent = github.md_files_content[filePath]
-            for (let i = 0; i < corrections.length; i++) {
-                const { original_line, correction } = corrections[i]
-                const contentIndex = updatedContent.indexOf(original_line)
-                if (contentIndex === -1) {
-                    console.log('Original line missing:', original_line)
-                    continue
-                }
-                const contentIndexEnd = contentIndex + original_line.length
-                updatedContent =
-                    updatedContent.substring(0, contentIndex) +
-                    correction +
-                    updatedContent.substring(contentIndexEnd)
-            }
-
-            // Update file content in the GitHub repository
-            await github.updateFileContent(
-                filePath,
-                updatedContent,
-                forkedOwner,
-                forkedRepo,
-                false
-            )
-
-            // Mark file as fixed
-            await addFixedFile(`${forkedOwner}@${forkedRepo}@${filePath}`)
             counter++
         }
-
         if (counter === 0) {
             console.log('No files to fix')
             return NextResponse.json(
@@ -196,15 +158,120 @@ export async function POST(request: Request) {
             )
         }
 
+        const prTitle = 'Fix grammatical errors in markdown files by Gitfix'
+        const prBody =
+            'This pull request fixes grammatical errors in the markdown files. ' +
+            'Changes are made by Gitfix, which is an AI-powered application, ' +
+            'aims to help developers in their daily tasks.'
+        await github.createPullRequest(prTitle, prBody, forkedOwner, forkedRepo)
         return NextResponse.json(
-            { message: 'Grammar correction jobs published successfully' },
+            { message: 'Pull request created successfully' },
             { status: 200 }
         )
     } catch (error) {
-        console.error('Error handling callback:', error)
+        console.error('Error handling GET request:', error)
         return NextResponse.json(
             { message: 'Internal server error', error: (error as any).message },
             { status: 500 }
         )
     }
+}
+
+const handler = async (req: Request) => {
+    try {
+        console.log('Received callback from OpenAI' + req)
+        const body = await req.json()
+        const decodedBody = JSON.parse(
+            atob(body.body)
+        ) as OpenAI.Chat.Completions.ChatCompletion
+
+        const { filePath, originalContent, forkedOwner, forkedRepo, owner, repo, auth } = body.metadata
+
+        const correctedContent = await parser(decodedBody, originalContent);
+
+        const github = new Github_API(owner, repo, auth);
+        await github.updateFileContent(filePath, correctedContent, forkedOwner, forkedRepo, false);
+        await addFixedFile(`${forkedOwner}@${forkedRepo}@${filePath}`);
+        return new Response("OK", { status: 200 });
+    } catch (error) {
+        console.error('Error processing callback:', error)
+        return new Response('Internal server error', { status: 500 })
+    }
+}
+
+export default async function POST(request: Request) {
+    return handler(request)
+}
+
+async function publishIntoQStash(file_content: string, filePath: string, owner: string, repo: string, auth: string, forkedOwner: string, forkedRepo: string) {
+    const client = new Client({
+        token: process.env.QSTASH_TOKEN as string,
+    })
+
+    const result = await client.publishJSON({
+        api: {
+            name: 'llm',
+            provider: openai({ token: process.env.OPEANI_API_KEY as string }),
+        },
+        body: {
+            messages: [
+                {
+                    role: 'system',
+                    content: `
+                I want you to fix grammatical errors in an mdx file.
+                I will give you the file and you will correct grammatical errors in the text(paragraphs and headers).
+                Your response should be an array of json objects.
+                Each one of those objects should contain the original line and corrections. 
+                Send me all the suggestions in a single answer in the following format:
+      
+                \{corrections : [{original_line, correction}, {original_line, correction}]\}
+      
+                You should only correct what is given in the file, do not add any original text.
+                DO NOT alter any of the code blocks, codes, paths or links.
+                In the front matter section, change only the title and summary if they are given in the original file.
+                DO NOT change any of the code blocks, including the strings and comments inside the code block.
+                Change the errors line by line and do not merge lines. Do not copy the content of one line to the other.
+                DO NOT merge lines.
+                DO NOT change the words with their synonyms.
+                DO NOT erase the front matter section. 
+                `,
+                },
+                { role: 'user', content: file_content },
+            ],
+            response_format: { type: 'json_object' },
+            model: 'gpt-4-turbo-preview',
+            temperature: 0,
+        },
+        callback: process.env.NEXTAUTH_URL + '/api/gitfix-callback',
+    })
+    return NextResponse.json({
+        message: 'API response is generated',
+        qstashMessageId: result.messageId,
+    })
+}
+
+async function parser(completion: OpenAI.Chat.Completions.ChatCompletion, file_content: string) {
+    const response = completion.choices[0]?.message?.content
+
+    let suggestions
+    try {
+        suggestions = JSON.parse(response as string).corrections
+    } catch (parseError: any) {
+        throw new Error(`Failed to parse JSON response: ${parseError.message}`)
+    }
+
+    for (let i = 0; i < suggestions.length; i++) {
+        const { original_line, correction } = suggestions[i]
+        const contentIndex = file_content.indexOf(original_line)
+        if (contentIndex === -1) {
+            console.log('Original line missing:', original_line)
+            continue
+        }
+        const contentIndexEnd = contentIndex + original_line.length
+        file_content =
+            file_content.substring(0, contentIndex) +
+            correction +
+            file_content.substring(contentIndexEnd)
+    }
+    return file_content
 }
