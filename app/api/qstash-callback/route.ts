@@ -4,21 +4,43 @@ import base64 from 'base-64'
 
 export async function POST(req: Request) {
     try {
-        const rawBody = await req.text();
-        const parsedBody = JSON.parse(rawBody);
-        console.log('Parsed body:', parsedBody);
-    
-        // Extract the corrections part
-        const corrections = parsedBody.choices.map((choice: any) => choice.message.content);
-    
-      
+      // Extract the raw text body from the request
+      const rawBody = await req.text();
+  
+      // Log the raw body to verify it's correctly received
+      console.log('Received raw body:', rawBody);
+  
+      // Parse the incoming request as JSON
+      const parsedBody = JSON.parse(rawBody);
+  
+      // Extract the base64-encoded string from the `body` field
+      const base64String = parsedBody.body;
+  
+      // Log the base64-encoded string to verify
+      console.log('Base64 string:', base64String);
+  
+      // Decode the base64-encoded string
+      const decodedString = Buffer.from(base64String, 'base64').toString('utf-8');
+  
+      // Log the decoded string to check if it's a valid JSON string
+      console.log('Decoded string:', decodedString);
+  
+      // Parse the JSON
+      const decodedBody = JSON.parse(decodedString);
+  
+      // Extract the corrections part
+      const corrections = decodedBody.choices.map((choice: any) => choice.message.content);
+  
+      // Log the corrections to verify
+      console.log('Corrections:', corrections);
+  
       return new Response(JSON.stringify({ success: true, corrections }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
     } catch (error) {
       console.error('Error processing callback:', error);
-      return new Response(JSON.stringify({ success: false, error: error}), {
+      return new Response(JSON.stringify({ success: false, error: error }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
       });
