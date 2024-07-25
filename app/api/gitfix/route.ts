@@ -102,21 +102,8 @@ import OpenAI from 'openai'
 import { NextApiRequest, NextApiResponse } from 'next'
 import { REPLCommand } from 'repl'
 
-// Default function to handle GET and POST requests
-export default async function handler(req: Request) {
-    if (req.method === 'GET') {
-        return handleGet(req);
-    } else if (req.method === 'POST') {
-        return handlePost(req);
-    } else {
-        return NextResponse.json(
-            { message: 'Method not allowed' },
-            { status: 405 }
-        );
-    }
-}
 
-export async function handleGet(request: Request) {
+export async function GET(request: Request) {
     try {
         console.log('Received request to fix markdown files')
 
@@ -191,10 +178,10 @@ export async function handleGet(request: Request) {
     }
 }
 
-const handlePost = async (req: Request) => {
+export async function POST(request: Request){
     try {
-        console.log('Received callback from OpenAI' + req)
-        const body = await req.json()
+        console.log('Received callback from OpenAI' + request)
+        const body = await request.json()
         const decodedBody = JSON.parse(
             atob(body.body)
         ) as OpenAI.Chat.Completions.ChatCompletion
