@@ -201,14 +201,21 @@ export async function POST(request: Request){
 }
 
 async function publishIntoQStash(file_content: string, filePath: string, owner: string, repo: string, auth: string, forkedOwner: string, forkedRepo: string) {
+    const qstashToken = process.env.QSTASH_TOKEN as string;
+    const openaiToken = process.env.OPENAI_API_KEY as string;
+    if (!qstashToken || !openaiToken) {
+        throw new Error('QSTASH_TOKEN or OPENAI_API_KEY is not set\n' + qstashToken + "\n" + openaiToken);
+    }
+    console.log('QStash token:', qstashToken);
+
     const client = new Client({
-        token: process.env.QSTASH_TOKEN!
+        token: qstashToken
     })
 
     const result = await client.publishJSON({
         api: {
             name: 'llm',
-            provider: openai({ token: process.env.OPEANI_API_KEY! }),
+            provider: openai({ token: openaiToken }),
         },
         body: {
             messages: [
