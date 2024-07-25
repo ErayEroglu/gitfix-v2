@@ -25,7 +25,7 @@ const Search = () => {
             setMessage('')
             try {
                 const response = await fetch('/api/gitfix', {
-                    method: 'POST',
+                    method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
                     },
