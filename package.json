@@ -15,6 +15,7 @@
         "@upstash/redis": "^1.33.0",
         "@vercel/kv": "^2.0.0",
         "autoprefixer": "^10.4.19",
+        "base-64": "^1.0.0",
         "cookies-next": "^4.2.1",
         "cssnano": "^7.0.4",
         "dotenv": "^16.4.5",
@@ -29,6 +30,7 @@
         "ts-node": "^10.9.2"
     },
     "devDependencies": {
+        "@types/base-64": "^1.0.2",
         "@types/jest": "^29.5.12",
         "@types/node": "^20",
         "@types/react": "^18",

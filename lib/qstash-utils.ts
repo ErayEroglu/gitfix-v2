@@ -1,17 +1,24 @@
-import { Client, openai } from "@upstash/qstash";
+import { Client, openai } from '@upstash/qstash'
 
 const client = new Client({
     token: process.env.QSTASH_TOKEN as string,
-});
+})
 
-export async function publishGrammarCorrectionJob(filePath: string, fileContent: string, callbackUrl: string) {
+export async function publishGrammarCorrectionJob(
+    filePath: string,
+    fileContent: string,
+    callbackUrl: string
+) {
     const result = await client.publishJSON({
-        api: { name: "llm", provider: openai({ token: process.env.OPENAI_API_KEY as string}) },
+        api: {
+            name: 'llm',
+            provider: openai({ token: process.env.OPENAI_API_KEY as string }),
+        },
         body: {
-            model: "gpt-4-turbo",
+            model: 'gpt-4-turbo',
             messages: [
                 {
-                    role: "system",
+                    role: 'system',
                     content: `
                         I want you to fix grammatical errors in an mdx file.
                         I will give you the file and you will correct grammatical errors in the text(paragraphs and headers).
@@ -37,7 +44,7 @@ export async function publishGrammarCorrectionJob(filePath: string, fileContent:
             temperature: 0,
         },
         callback: callbackUrl,
-    });
-    console.log(result);
-    return result;
+    })
+    console.log(result)
+    return result
 }

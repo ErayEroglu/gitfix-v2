@@ -99,7 +99,12 @@ const Search = () => {
                 </button>
             </form>
             {message && (
-                <p style={{ marginTop: '20px', color: isLoading ? 'blue' : color }}>
+                <p
+                    style={{
+                        marginTop: '20px',
+                        color: isLoading ? 'blue' : color,
+                    }}
+                >
                     {message}
                 </p>
             )}
