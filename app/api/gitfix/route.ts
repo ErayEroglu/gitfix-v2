@@ -146,7 +146,6 @@ export async function GET(request: Request) {
             }
             const originalContent = github.md_files_content[filePath]
             await publishIntoQStash(originalContent, filePath, owner, repo, auth, forkedOwner, forkedRepo)
-
             counter++
         }
         if (counter === 0) {
@@ -203,13 +202,13 @@ export async function POST(request: Request){
 
 async function publishIntoQStash(file_content: string, filePath: string, owner: string, repo: string, auth: string, forkedOwner: string, forkedRepo: string) {
     const client = new Client({
-        token: process.env.QSTASH_TOKEN as string,
+        token: process.env.QSTASH_TOKEN!
     })
 
     const result = await client.publishJSON({
         api: {
             name: 'llm',
-            provider: openai({ token: process.env.OPEANI_API_KEY as string }),
+            provider: openai({ token: process.env.OPEANI_API_KEY! }),
         },
         body: {
             messages: [
