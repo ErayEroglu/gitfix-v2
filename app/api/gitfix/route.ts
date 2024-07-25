@@ -116,8 +116,6 @@ export default async function handler(req: Request) {
     }
 }
 
-
-
 export async function handleGet(request: Request) {
     try {
         console.log('Received request to fix markdown files')
@@ -287,9 +285,3 @@ async function parser(completion: OpenAI.Chat.Completions.ChatCompletion, file_c
     }
     return file_content
 }
-
-export const config = {
-    api: {
-        bodyParser: false,
-    },
-};
