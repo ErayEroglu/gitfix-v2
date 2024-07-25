@@ -1,16 +1,43 @@
 // src/app/api/qstash-callback/route.ts
-import { NextResponse } from 'next/server'
-import base64 from 'base-64'
-
 export async function POST(req: Request) {
     try {
-        const body = await req.json()
-        const { choices } = body
-        const correctedContent = choices[0]?.message?.content
-
-        console.log('Corrected Content:', correctedContent)
-
-        return NextResponse.json({ message: 'File updated successfully' })
+      // Extract the raw text body from the request
+      const rawBody = await req.text();
+  
+      // Log the raw body to verify it's correctly received
+      console.log('Received raw body:', rawBody);
+  
+      // Parse the incoming request as JSON
+      const parsedBody = JSON.parse(rawBody);
+  
+      // Extract the base64-encoded string from the `body` field
+      const base64String = parsedBody.body;
+  
+      // Log the base64-encoded string to verify
+      console.log('Base64 string:', base64String);
+  
+      // Decode the base64-encoded string
+      const decodedString = Buffer.from(base64String, 'base64').toString('utf-8');
+  
+      // Log the decoded string to check if it's a valid JSON string
+      console.log('Decoded string:', decodedString);
+  
+      // Parse the JSON
+      const decodedBody = JSON.parse(decodedString);
+  
+      // Extract the choices part
+      const { choices } = decodedBody;
+  
+      // Extract the corrected content
+      const correctedContent = choices[0]?.message?.content;
+  
+      // Log the corrected content to verify
+      console.log('Corrected Content:', correctedContent);
+  
+      return new Response(JSON.stringify({ message: 'File updated successfully', correctedContent }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
     } catch (error) {
       console.error('Error processing callback:', error);
       return new Response(JSON.stringify({ success: false, error: error }), {
