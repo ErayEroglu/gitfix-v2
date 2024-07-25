@@ -24,17 +24,12 @@ const Search = () => {
             setIsLoading(true)
             setMessage('')
             try {
-                const response = await fetch('/api/gitfix', {
+                const response = await fetch(`/api/gitfix?owner=${owner}&repo=${repo}&auth=${authToken}`, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        owner,
-                        repo,
-                        auth: authToken,
-                    }),
-                })
+                });
 
                 const data = await response.json()
                 if (response.ok) {

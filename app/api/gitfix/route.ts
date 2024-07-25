@@ -105,7 +105,11 @@ export async function GET(request: Request) {
         console.log('Received request to fix markdown files')
 
         // Parse the JSON request body
-        const { owner, repo, auth } = await request.json()
+        const { searchParams } = new URL(request.url);
+        const owner = searchParams.get('owner');
+        const repo = searchParams.get('repo');
+        const auth = searchParams.get('auth');
+
 
         if (!owner || !repo || !auth) {
             return NextResponse.json(
