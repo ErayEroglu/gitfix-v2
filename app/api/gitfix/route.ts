@@ -99,9 +99,6 @@ import { Github_API } from '@/lib/github-api'
 import { addFixedFile, isFileFixed } from '@/lib/redis-utils'
 import { Client, openai, upstash } from '@upstash/qstash'
 import OpenAI from 'openai'
-import { NextApiRequest, NextApiResponse } from 'next'
-import { REPLCommand } from 'repl'
-
 
 export async function GET(request: Request) {
     try {
@@ -239,7 +236,7 @@ async function publishIntoQStash(file_content: string, filePath: string, owner: 
             model: 'gpt-4-turbo-preview',
             temperature: 0,
         },
-        callback: process.env.NEXTAUTH_URL + '/api/gitfix-callback',
+        callback: process.env.NEXTAUTH_URL + '/api/gitfix',
     })
     return NextResponse.json({
         message: 'API response is generated',
