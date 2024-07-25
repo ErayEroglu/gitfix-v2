@@ -102,7 +102,23 @@ import OpenAI from 'openai'
 import { NextApiRequest, NextApiResponse } from 'next'
 import { REPLCommand } from 'repl'
 
-export async function GET(request: Request) {
+// Default function to handle GET and POST requests
+export default async function handler(req: Request) {
+    if (req.method === 'GET') {
+        return handleGet(req);
+    } else if (req.method === 'POST') {
+        return handlePost(req);
+    } else {
+        return NextResponse.json(
+            { message: 'Method not allowed' },
+            { status: 405 }
+        );
+    }
+}
+
+
+
+export async function handleGet(request: Request) {
     try {
         console.log('Received request to fix markdown files')
 
@@ -177,7 +193,7 @@ export async function GET(request: Request) {
     }
 }
 
-const handler = async (req: Request) => {
+const handlePost = async (req: Request) => {
     try {
         console.log('Received callback from OpenAI' + req)
         const body = await req.json()
@@ -197,10 +213,6 @@ const handler = async (req: Request) => {
         console.error('Error processing callback:', error)
         return new Response('Internal server error', { status: 500 })
     }
-}
-
-export default async function POST(request: Request) {
-    return handler(request)
 }
 
 async function publishIntoQStash(file_content: string, filePath: string, owner: string, repo: string, auth: string, forkedOwner: string, forkedRepo: string) {
@@ -275,3 +287,9 @@ async function parser(completion: OpenAI.Chat.Completions.ChatCompletion, file_c
     }
     return file_content
 }
+
+export const config = {
+    api: {
+        bodyParser: false,
+    },
+};
