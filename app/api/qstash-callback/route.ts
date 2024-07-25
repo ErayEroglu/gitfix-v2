@@ -4,10 +4,10 @@ import base64 from 'base-64'
 
 export async function POST(req: Request) {
     try {
+        console.log('Received request from QStash' + req)
         const rawBody = await req.text();
 
         // Log the raw body to verify it's correctly received
-        console.log('Received raw body:', rawBody);
     
         // Assume the body contains JSON with the base64-encoded string as a property
         const parsedBody = JSON.parse(rawBody);
