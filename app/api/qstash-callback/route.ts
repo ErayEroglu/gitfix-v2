@@ -4,12 +4,32 @@ import base64 from 'base-64'
 
 export async function POST(req: Request) {
     try {
-      const body = await req.text();
-      const decodedBody = JSON.parse(Buffer.from(body, 'base64').toString());
-      const corrections = decodedBody.choices.map((choice: any) => choice.message.content);
-      
-      // Process the corrections further if needed
-      console.log('Corrections:', corrections);
+        const rawBody = await req.text();
+
+        // Log the raw body to verify it's correctly received
+        console.log('Received raw body:', rawBody);
+    
+        // Assume the body contains JSON with the base64-encoded string as a property
+        const parsedBody = JSON.parse(rawBody);
+        
+        // Extract the base64-encoded string from the JSON body
+        const base64String = parsedBody.base64;
+    
+        // Log the base64-encoded string to verify
+        console.log('Base64 string:', base64String);
+    
+        // Decode the base64-encoded string
+        const decodedString = Buffer.from(base64String, 'base64').toString('utf-8');
+    
+        // Log the decoded string to check if it's a valid JSON string
+        console.log('Decoded string:', decodedString);
+    
+        // Parse the JSON
+        const decodedBody = JSON.parse(decodedString);
+    
+        // Extract the corrections part
+        const corrections = decodedBody.choices.map((choice: any) => choice.message.content);
+    
       
       return new Response(JSON.stringify({ success: true, corrections }), {
         status: 200,
