@@ -78,8 +78,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request){
     try {
-        console.log('Received callback from OpenAI' + request)
         const body = await request.json()
+        console.log('Received body:', body)
         const decodedBody = JSON.parse(
             atob(body.body)
         ) as OpenAI.Chat.Completions.ChatCompletion
@@ -91,6 +91,7 @@ export async function POST(request: Request){
         const github = new Github_API(owner, repo, auth);
         await github.updateFileContent(filePath, correctedContent, forkedOwner, forkedRepo, false);
         await addFixedFile(`${forkedOwner}@${forkedRepo}@${filePath}`);
+
         const prTitle = 'Fix grammatical errors in markdown files by Gitfix'
         const prBody =
             'This pull request fixes grammatical errors in the markdown files. ' +
