@@ -49,7 +49,8 @@ export async function GET(request: Request) {
                 break
             }
             const originalContent = github.md_files_content[filePath]
-            await publishIntoQStash(originalContent, filePath, owner, repo, auth, forkedOwner, forkedRepo)
+            const metadata = { filePath, originalContent, forkedOwner, forkedRepo, owner, repo, auth }
+            await publishIntoQStash(originalContent, metadata)
             counter++
         }
         if (counter === 0) {
@@ -85,7 +86,7 @@ export async function POST(request: Request){
         ) as OpenAI.Chat.Completions.ChatCompletion
 
         const { filePath, originalContent, forkedOwner, forkedRepo, owner, repo, auth } = body.metadata
-
+        console.log('Received metadata:', filePath, forkedOwner, forkedRepo, owner, repo, auth)
         const correctedContent = await parser(decodedBody, originalContent);
 
         const github = new Github_API(owner, repo, auth);
@@ -105,7 +106,7 @@ export async function POST(request: Request){
     }
 }
 
-async function publishIntoQStash(file_content: string, filePath: string, owner: string, repo: string, auth: string, forkedOwner: string, forkedRepo: string) {
+async function publishIntoQStash(file_content: string, metadata : any) {
     const qstashToken = process.env.QSTASH_TOKEN as string;
     const openaiToken = process.env.OPENAI_API_KEY as string;
     if (!qstashToken || !openaiToken) {
@@ -149,6 +150,7 @@ async function publishIntoQStash(file_content: string, filePath: string, owner: 
             response_format: { type: 'json_object' },
             model: 'gpt-4-turbo-preview',
             temperature: 0,
+            metadata: metadata,
         },
         callback: process.env.NEXTAUTH_URL + '/api/gitfix',
     })
