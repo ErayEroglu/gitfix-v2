@@ -155,7 +155,6 @@ async function publishIntoQStash(file_content: string, metadata : any) {
             response_format: { type: 'json_object' },
             model: 'gpt-4-turbo-preview',
             temperature: 0,
-            metadata: metadata,
         },
         callback: process.env.NEXTAUTH_URL + '/api/gitfix',
     })
