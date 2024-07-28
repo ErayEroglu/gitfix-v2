@@ -97,7 +97,7 @@ export async function POST(request: Request){
         // await addFixedFile(`${forkedOwner}@${forkedRepo}@${filePath}`);
 
 
-        console.log('the opeani answer : ',decodedBody)
+        console.log('the opeani answer : ',decodedBody.choices[0].message.content)
         const prTitle = 'Fix grammatical errors in markdown files by Gitfix'
         const prBody =
             'This pull request fixes grammatical errors in the markdown files. ' +
