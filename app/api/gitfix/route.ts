@@ -85,23 +85,25 @@ export async function POST(request: Request){
             atob(body.body)
         ) as OpenAI.Chat.Completions.ChatCompletion
 
-        const { filePath, originalContent, forkedOwner, forkedRepo, owner, repo, auth } = body.metadata || {}
-        if (!filePath || !originalContent || !forkedOwner || !forkedRepo || !owner || !repo || !auth) {
-            throw new Error('Missing metadata fields')
-        }
-        console.log('Received metadata:', filePath, forkedOwner, forkedRepo, owner, repo, auth)
-        const correctedContent = await parser(decodedBody, originalContent);
+        // const { filePath, originalContent, forkedOwner, forkedRepo, owner, repo, auth } = body.metadata || {}
+        // if (!filePath || !originalContent || !forkedOwner || !forkedRepo || !owner || !repo || !auth) {
+        //     throw new Error('Missing metadata fields')
+        // }
+        // console.log('Received metadata:', filePath, forkedOwner, forkedRepo, owner, repo, auth)
+        // const correctedContent = await parser(decodedBody, originalContent);
 
-        const github = new Github_API(owner, repo, auth);
-        await github.updateFileContent(filePath, correctedContent, forkedOwner, forkedRepo, false);
-        await addFixedFile(`${forkedOwner}@${forkedRepo}@${filePath}`);
+        // const github = new Github_API(owner, repo, auth);
+        // await github.updateFileContent(filePath, correctedContent, forkedOwner, forkedRepo, false);
+        // await addFixedFile(`${forkedOwner}@${forkedRepo}@${filePath}`);
 
+
+        console.log('the opeani answer : ',decodedBody)
         const prTitle = 'Fix grammatical errors in markdown files by Gitfix'
         const prBody =
             'This pull request fixes grammatical errors in the markdown files. ' +
             'Changes are made by Gitfix, which is an AI-powered application, ' +
             'aims to help developers in their daily tasks.'
-        await github.createPullRequest(prTitle, prBody, forkedOwner, forkedRepo)
+        // await github.createPullRequest(prTitle, prBody, forkedOwner, forkedRepo)
         return new Response("OK", { status: 200 });
     } catch (error) {
         console.error('Error processing callback:', error)
