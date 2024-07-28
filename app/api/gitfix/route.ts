@@ -85,7 +85,10 @@ export async function POST(request: Request){
             atob(body.body)
         ) as OpenAI.Chat.Completions.ChatCompletion
 
-        const { filePath, originalContent, forkedOwner, forkedRepo, owner, repo, auth } = body.metadata
+        const { filePath, originalContent, forkedOwner, forkedRepo, owner, repo, auth } = body.metadata || {}
+        if (!filePath || !originalContent || !forkedOwner || !forkedRepo || !owner || !repo || !auth) {
+            throw new Error('Missing metadata fields')
+        }
         console.log('Received metadata:', filePath, forkedOwner, forkedRepo, owner, repo, auth)
         const correctedContent = await parser(decodedBody, originalContent);
 
