@@ -100,9 +100,8 @@ export async function POST(request: Request){
 
         const github = new Github_API(owner, repo, auth);
         await github.initializeRepoDetails();
-        await github.getFileContent();
         
-        await github.updateFileContent(filePath, correctedContent, forkedOwner, forkedRepo, false);
+        await github.updateFileContent(filePath, correctedContent, forkedOwner, forkedRepo, true);
         await addFixedFile(`${forkedOwner}@${forkedRepo}@${filePath}`);
         
         const prTitle = 'Fix grammatical errors in markdown files by Gitfix'
