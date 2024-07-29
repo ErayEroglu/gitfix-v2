@@ -9,14 +9,30 @@ const Search = () => {
     const [isLoading, setIsLoading] = useState(false)
     const [message, setMessage] = useState('')
     const [color, setColor] = useState('')
-    const router = useRouter()
-    const { data: session } = useSession()
+    const [logs, setLogs] = useState<string[]>([]); // State for logs
+    const router = useRouter();
+    const { data: session } = useSession();
 
     useEffect(() => {
         if (session) {
             setAuthToken(session.accessToken as string)
         }
     }, [session])
+
+    useEffect(() => {
+        // Set up EventSource for server-sent events
+        const eventSource = new EventSource('/api/logs'); // Adjust the endpoint as needed
+        eventSource.onmessage = (event) => {
+            setLogs((prevLogs) => [...prevLogs, event.data]);
+        };
+        eventSource.onerror = (error) => {
+            console.error('SSE error:', error);
+            eventSource.close();
+        };
+        return () => {
+            eventSource.close();
+        };
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -112,8 +128,28 @@ const Search = () => {
             >
                 Log Out
             </button>
+
+            <div style={{ marginTop: '30px', width: '80%' }}>
+                <h2>Logs:</h2>
+                <div
+                    style={{
+                        border: '1px solid #ddd',
+                        padding: '10px',
+                        borderRadius: '4px',
+                        backgroundColor: '#f9f9f9',
+                        maxHeight: '200px',
+                        overflowY: 'auto',
+                    }}
+                >
+                    {logs.map((log, index) => (
+                        <p key={index} style={{ margin: '5px 0' }}>
+                            {log}
+                        </p>
+                    ))}
+                </div>
+            </div>
         </div>
-    )
+    );
 }
 
 export default Search

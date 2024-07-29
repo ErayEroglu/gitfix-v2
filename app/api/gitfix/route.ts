@@ -2,12 +2,15 @@ import { NextResponse } from 'next/server'
 import { Github_API } from '@/lib/github-api'
 import { addFixedFile, isFileFixed, clearDatabase } from '@/lib/redis-utils'
 import { Client, openai, upstash } from '@upstash/qstash'
+import  { sendMessageToClients } from '@/app/api/log/route'
+
 import OpenAI from 'openai'
 
 export async function GET(request: Request) {
     try {
         console.log('Received request to fix markdown files')
-
+        sendMessageToClients('Received request to fix markdown files')
+        await clearDatabase()
         // Parse the JSON request body
         const { searchParams } = new URL(request.url)
         const owner = searchParams.get('owner')
@@ -47,6 +50,7 @@ export async function GET(request: Request) {
         }
         if (counter === 0) {
             console.log('No files to fix')
+            sendMessageToClients('No files to fix')
             return NextResponse.json(
                 {
                     message:
@@ -76,12 +80,9 @@ export async function POST(request: Request) {
             atob(body.body)
         ) as OpenAI.Chat.Completions.ChatCompletion
         
-        console.log('Received body:', decodedBody)
         const corrections = JSON.parse(
             decodedBody.choices[0].message.content as string
         ).corrections
-
-        console.log('Received callback:', corrections)
 
         const filePath = corrections[0].filepath
         const originalContent = corrections[0].originalContent
@@ -146,6 +147,7 @@ async function publishIntoQStash(
     repo: string,
     auth: string
 ) {
+    sendMessageToClients('Task is sending to QStash')
     const qstashToken: string = process.env.QSTASH_TOKEN as string
     const openaiToken: string = process.env.OPENAI_API_KEY as string
     if (!qstashToken || !openaiToken) {
