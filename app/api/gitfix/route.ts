@@ -79,6 +79,8 @@ export async function POST(request: Request) {
             decodedBody.choices[0].message.content as string
         ).corrections
 
+        console.log('Received callback:', corrections)
+
         const filePath = corrections[0].filepath
         const originalContent = corrections[0].originalContent
         const forkedOwner = corrections[0].forkedOwner
