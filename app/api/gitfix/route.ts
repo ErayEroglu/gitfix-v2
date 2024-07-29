@@ -9,11 +9,10 @@ export async function GET(request: Request) {
         console.log('Received request to fix markdown files')
 
         // Parse the JSON request body
-        const { searchParams } = new URL(request.url);
-        const owner = searchParams.get('owner');
-        const repo = searchParams.get('repo');
-        const auth = searchParams.get('auth');
-
+        const { searchParams } = new URL(request.url)
+        const owner = searchParams.get('owner')
+        const repo = searchParams.get('repo')
+        const auth = searchParams.get('auth')
 
         if (!owner || !repo || !auth) {
             return NextResponse.json(
@@ -49,7 +48,15 @@ export async function GET(request: Request) {
                 break
             }
             const originalContent = github.md_files_content[filePath]
-            await publishIntoQStash(originalContent, filePath, forkedOwner, forkedRepo, owner, repo, auth)
+            await publishIntoQStash(
+                originalContent,
+                filePath,
+                forkedOwner,
+                forkedRepo,
+                owner,
+                repo,
+                auth
+            )
             counter++
         }
         if (counter === 0) {
@@ -76,13 +83,15 @@ export async function GET(request: Request) {
     }
 }
 
-export async function POST(request: Request){
+export async function POST(request: Request) {
     try {
         const body = await request.json()
         const decodedBody = JSON.parse(
             atob(body.body)
         ) as OpenAI.Chat.Completions.ChatCompletion
-        const corrections = JSON.parse(decodedBody.choices[0].message.content as string).corrections
+        const corrections = JSON.parse(
+            decodedBody.choices[0].message.content as string
+        ).corrections
 
         const filePath = corrections[0].filepath
         const originalContent = corrections[0].originalContent
@@ -91,41 +100,76 @@ export async function POST(request: Request){
         const owner = corrections[0].owner
         const repo = corrections[0].repo
         const auth = corrections[0].auth
-                
-        if (!filePath || !originalContent || !forkedOwner || !forkedRepo || !owner || !repo || !auth) {
+
+        if (
+            !filePath ||
+            !originalContent ||
+            !forkedOwner ||
+            !forkedRepo ||
+            !owner ||
+            !repo ||
+            !auth
+        ) {
             throw new Error('Missing metadata fields')
         }
-        console.log('Received metadata:', filePath, forkedOwner, forkedRepo, owner, repo, auth)
-        const correctedContent = await parser(decodedBody, originalContent);
+        console.log(
+            'Received metadata:',
+            filePath,
+            forkedOwner,
+            forkedRepo,
+            owner,
+            repo,
+            auth
+        )
+        const correctedContent = await parser(decodedBody, originalContent)
 
-        const github = new Github_API(owner, repo, auth);
-        await github.initializeRepoDetails();
-        
-        await github.updateFileContent(filePath, correctedContent, forkedOwner, forkedRepo, true);
-        await addFixedFile(`${forkedOwner}@${forkedRepo}@${filePath}`);
-        
+        const github = new Github_API(owner, repo, auth)
+        await github.initializeRepoDetails()
+
+        await github.updateFileContent(
+            filePath,
+            correctedContent,
+            forkedOwner,
+            forkedRepo,
+            true
+        )
+        await addFixedFile(`${forkedOwner}@${forkedRepo}@${filePath}`)
+
         const prTitle = 'Fix grammatical errors in markdown files by Gitfix'
         const prBody =
             'This pull request fixes grammatical errors in the markdown files. ' +
             'Changes are made by Gitfix, which is an AI-powered application, ' +
             'aims to help developers in their daily tasks.'
         await github.createPullRequest(prTitle, prBody, forkedOwner, forkedRepo)
-        return new Response("OK", { status: 200 });
+        return new Response('OK', { status: 200 })
     } catch (error) {
         console.error('Error processing callback:', error)
         return new Response('Internal server error', { status: 500 })
     }
 }
 
-async function publishIntoQStash(file_content: string, filePath: string, forkedOwner: string, forkedRepo: string, owner: string, repo: string, auth: string) {
-    const qstashToken: string = process.env.QSTASH_TOKEN as string;
-    const openaiToken: string = process.env.OPENAI_API_KEY as string;
+async function publishIntoQStash(
+    file_content: string,
+    filePath: string,
+    forkedOwner: string,
+    forkedRepo: string,
+    owner: string,
+    repo: string,
+    auth: string
+) {
+    const qstashToken: string = process.env.QSTASH_TOKEN as string
+    const openaiToken: string = process.env.OPENAI_API_KEY as string
     if (!qstashToken || !openaiToken) {
-        throw new Error('QSTASH_TOKEN or OPENAI_API_KEY is not set\n' + qstashToken + "\n" + openaiToken);
+        throw new Error(
+            'QSTASH_TOKEN or OPENAI_API_KEY is not set\n' +
+                qstashToken +
+                '\n' +
+                openaiToken
+        )
     }
 
     const client: Client = new Client({
-        token: qstashToken
+        token: qstashToken,
     })
 
     const result: any = await client.publishJSON({
@@ -185,7 +229,10 @@ async function publishIntoQStash(file_content: string, filePath: string, forkedO
     })
 }
 
-async function parser(completion: OpenAI.Chat.Completions.ChatCompletion, file_content: string) {
+async function parser(
+    completion: OpenAI.Chat.Completions.ChatCompletion,
+    file_content: string
+) {
     const response = completion.choices[0]?.message?.content
 
     let suggestions

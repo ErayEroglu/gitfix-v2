@@ -227,12 +227,23 @@ export class Github_API {
             'Content-Type': 'application/json',
         })
         if (!response.ok) {
+            if (response.status === 404) {
+                const newUrl = `https://api.github.com/repos/${owner}/${repo}/git/refs/heads/master`
+                const newResponse = await fetch(newUrl, {
+                    ...headers,
+                    'Content-Type': 'application/json',
+                })
+
+                if (newResponse.ok) {
+                    const data = await newResponse.json()
+                    return data.object.sha
+                }
+            }
             const errorData = await response.json()
             throw new Error(
                 `Error fetching default branch SHA: ${response.status} ${errorData.message}`
             )
         }
-
         const data = await response.json()
         return data.object.sha
     }
@@ -266,19 +277,25 @@ export class Github_API {
         return await response.json()
     }
 
-    private async getFileSHA(url: string, headers: any, branch: string): Promise<string> {
+    private async getFileSHA(
+        url: string,
+        headers: any,
+        branch: string
+    ): Promise<string> {
         const response = await fetch(`${url}?ref=${branch}`, {
             method: 'GET',
             headers: headers,
-        });
-    
+        })
+
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Failed to get file SHA: ${response.status} - ${errorText}`);
+            const errorText = await response.text()
+            throw new Error(
+                `Failed to get file SHA: ${response.status} - ${errorText}`
+            )
         }
-    
-        const fileData = await response.json();
-        return fileData.sha;
+
+        const fileData = await response.json()
+        return fileData.sha
     }
 
     private getHeaders() {
