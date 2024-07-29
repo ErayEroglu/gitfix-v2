@@ -83,6 +83,7 @@ export async function POST(request: Request){
             atob(body.body)
         ) as OpenAI.Chat.Completions.ChatCompletion
         const corrections = JSON.parse(decodedBody.choices[0].message.content as string).corrections
+        console.log(corrections[0])
         const { filePath, originalContent, forkedOwner, forkedRepo, owner, repo, auth } = corrections[0]
         
         // const { filePath, originalContent, forkedOwner, forkedRepo, owner, repo, auth } = body.metadata || {}
