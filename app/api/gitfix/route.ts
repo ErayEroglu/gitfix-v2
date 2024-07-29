@@ -50,7 +50,7 @@ export async function GET(request: Request) {
             }
             const originalContent = github.md_files_content[filePath]
             const metadata = { filePath, originalContent, forkedOwner, forkedRepo, owner, repo, auth }
-            await publishIntoQStash(originalContent, metadata)
+            await publishIntoQStash(originalContent, filePath, forkedOwner, forkedRepo, owner, repo, auth)
             counter++
         }
         if (counter === 0) {
@@ -97,32 +97,36 @@ export async function POST(request: Request){
         // await addFixedFile(`${forkedOwner}@${forkedRepo}@${filePath}`);
 
 
-        console.log('the opeani answer : ',decodedBody.choices[0].message.content)
-        const prTitle = 'Fix grammatical errors in markdown files by Gitfix'
-        const prBody =
-            'This pull request fixes grammatical errors in the markdown files. ' +
-            'Changes are made by Gitfix, which is an AI-powered application, ' +
-            'aims to help developers in their daily tasks.'
-        // await github.createPullRequest(prTitle, prBody, forkedOwner, forkedRepo)
-        return new Response("OK", { status: 200 });
+        return NextResponse.json(
+            { message: decodedBody.choices[0].message.content },
+            { status: 200 }
+        );
+        
+        // const prTitle = 'Fix grammatical errors in markdown files by Gitfix'
+        // const prBody =
+        //     'This pull request fixes grammatical errors in the markdown files. ' +
+        //     'Changes are made by Gitfix, which is an AI-powered application, ' +
+        //     'aims to help developers in their daily tasks.'
+        // // await github.createPullRequest(prTitle, prBody, forkedOwner, forkedRepo)
+        // return new Response("OK", { status: 200 });
     } catch (error) {
         console.error('Error processing callback:', error)
         return new Response('Internal server error', { status: 500 })
     }
 }
 
-async function publishIntoQStash(file_content: string, metadata : any) {
-    const qstashToken = process.env.QSTASH_TOKEN as string;
-    const openaiToken = process.env.OPENAI_API_KEY as string;
+async function publishIntoQStash(file_content: string, filePath: string, forkedOwner: string, forkedRepo: string, owner: string, repo: string, auth: string) {
+    const qstashToken: string = process.env.QSTASH_TOKEN as string;
+    const openaiToken: string = process.env.OPENAI_API_KEY as string;
     if (!qstashToken || !openaiToken) {
         throw new Error('QSTASH_TOKEN or OPENAI_API_KEY is not set\n' + qstashToken + "\n" + openaiToken);
     }
 
-    const client = new Client({
+    const client: Client = new Client({
         token: qstashToken
     })
 
-    const result = await client.publishJSON({
+    const result: any = await client.publishJSON({
         api: {
             name: 'llm',
             provider: openai({ token: openaiToken }),
@@ -137,9 +141,23 @@ async function publishIntoQStash(file_content: string, metadata : any) {
                 Your response should be an array of json objects.
                 Each one of those objects should contain the original line and corrections. 
                 Send me all the suggestions in a single answer in the following format:
-      
-                \{corrections : [{original_line, correction}, {original_line, correction}]\}
-      
+
+                Before you start generating corrections, do the following:
+                I will give you the required information for the first element, do not change it and directly use it.
+                After that, you can start generating corrections.
+
+                Explicity, the form of array will be this: 
+                \{corrections : [{
+                    "file": "${filePath}",
+                    "forkedOwner": "${forkedOwner}",
+                    "forkedRepo": "${forkedRepo}",
+                    "owner": "${owner}",
+                    "repo": "${repo}",
+                    "auth": "${auth}"
+                }
+                {original_line, correction}, 
+                {original_line, correction}]\}
+
                 You should only correct what is given in the file, do not add any original text.
                 DO NOT alter any of the code blocks, codes, paths or links.
                 In the front matter section, change only the title and summary if they are given in the original file.
