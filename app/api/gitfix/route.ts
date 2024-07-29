@@ -33,14 +33,10 @@ export async function GET(request: Request) {
         let counter = 0
         for (const filePath of Object.keys(github.md_files_content)) {
             const isFixed = await isFileFixed(
-                forkedOwner + '@' + forkedRepo + '@' + filePath
+                owner + '@' + repo + '@' + filePath
             )
-            if (isFixed) {
-                console.log(`File ${filePath} is already fixed, skipping...`)
-                continue
-            }
             console.log(`Fixing file: ${filePath}`)
-            if (counter > 3) {
+            if (counter > github.fileLimit) {
                 console.log(
                     'Max file limit reached, if you want to process more files, ' +
                         'please run the app again.'

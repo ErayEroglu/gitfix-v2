@@ -1,3 +1,5 @@
+import { isFileFixed } from "./redis-utils"
+
 const GITHUB_API_VERSION = '2022-11-28'
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 
@@ -11,6 +13,7 @@ export class Github_API {
     md_files_content: any
     updatedItems: string[]
     headers: any
+    fileLimit: number = 3
 
     constructor(owner: string, repo: string, auth: string | undefined) {
         this.owner = owner
@@ -103,7 +106,7 @@ export class Github_API {
         const headers = this.headers
         const defaultBranch = await this.getDefaultBranch(this.owner, this.repo)
         const head = await this.setBranch(forkedOwner, false)
-        if (await this.checkExistingPR(head,this.owner,this.repo)) {
+        if (await this.checkExistingPR(head, this.owner, this.repo)) {
             console.log('Pull request already exists')
             return
         }
@@ -205,7 +208,18 @@ export class Github_API {
 
     // get sthe content of each md file
     private async getMdFileDetails(): Promise<void> {
+        let counter = 0
         for (const item of this.items) {
+            if (await isFileFixed(this.owner + '@' + this.repo + '@' + item.path)) {
+                console.log(`File ${item.path} is already fixed, skipping...`)
+                continue
+            }
+            if (counter > this.fileLimit) {
+                console.log(
+                    'Max file limit reached, if you want to process more files, please run the app again or run it on local environment.'
+                )
+                break
+            }
             const url = this.url + `/git/blobs/${item.sha}`
             const headers = this.headers
             const response = await fetch(url, { headers })
@@ -218,6 +232,7 @@ export class Github_API {
             console.log(`Extracting the contents of ${item.path}`)
             const decodedContent = this.decodeBase64(data.content)
             this.md_files_content[item.path] = decodedContent
+            counter++
         }
     }
 
@@ -272,17 +287,23 @@ export class Github_API {
         return data.default_branch
     }
 
-    async checkExistingPR(branch: string, targetOwner: string, targetRepo: string): Promise<boolean> {
-        const url = `https://api.github.com/repos/${targetOwner}/${targetRepo}/pulls?head=${this.owner}:${branch}&state=open`;
-        const response = await fetch(url, { headers: this.headers });
+    async checkExistingPR(
+        branch: string,
+        targetOwner: string,
+        targetRepo: string
+    ): Promise<boolean> {
+        const url = `https://api.github.com/repos/${targetOwner}/${targetRepo}/pulls?head=${this.owner}:${branch}&state=open`
+        const response = await fetch(url, { headers: this.headers })
 
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Failed to check for existing PRs: ${response.status} - ${errorText}`);
+            const errorText = await response.text()
+            throw new Error(
+                `Failed to check for existing PRs: ${response.status} - ${errorText}`
+            )
         }
 
-        const pulls = await response.json();
-        return pulls.length > 0;
+        const pulls = await response.json()
+        return pulls.length > 0
     }
 
     // reposityory information
