@@ -75,6 +75,8 @@ export async function POST(request: Request) {
         const decodedBody = JSON.parse(
             atob(body.body)
         ) as OpenAI.Chat.Completions.ChatCompletion
+        
+        console.log('Received body:', decodedBody)
         const corrections = JSON.parse(
             decodedBody.choices[0].message.content as string
         ).corrections
