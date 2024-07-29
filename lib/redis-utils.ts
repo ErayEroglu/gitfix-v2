@@ -27,3 +27,7 @@ export async function getAllFixedFiles(): Promise<string[]> {
     const result = await redis.smembers('fixed_files')
     return result
 }
+
+export async function clearDatabase(): Promise<void> {
+    await redis.flushall()
+}

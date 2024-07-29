@@ -1,4 +1,4 @@
-import { isFileFixed } from "./redis-utils"
+import { isFileFixed } from './redis-utils'
 
 const GITHUB_API_VERSION = '2022-11-28'
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
@@ -210,7 +210,11 @@ export class Github_API {
     private async getMdFileDetails(): Promise<void> {
         let counter = 0
         for (const item of this.items) {
-            if (await isFileFixed(this.owner + '@' + this.repo + '@' + item.path)) {
+            if (
+                await isFileFixed(
+                    this.owner + '@' + this.repo + '@' + item.path
+                )
+            ) {
                 console.log(`File ${item.path} is already fixed, skipping...`)
                 continue
             }

@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
 import { Github_API } from '@/lib/github-api'
-import { addFixedFile, isFileFixed } from '@/lib/redis-utils'
+import { addFixedFile, isFileFixed, clearDatabase } from '@/lib/redis-utils'
 import { Client, openai, upstash } from '@upstash/qstash'
 import OpenAI from 'openai'
 
 export async function GET(request: Request) {
     try {
         console.log('Received request to fix markdown files')
+        await clearDatabase()
 
         // Parse the JSON request body
         const { searchParams } = new URL(request.url)
