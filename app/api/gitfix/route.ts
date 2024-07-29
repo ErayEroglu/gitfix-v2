@@ -134,7 +134,6 @@ export async function POST(request: Request) {
             true
         )
         await addFixedFile(`${forkedOwner}@${forkedRepo}@${filePath}`)
-
         const prTitle = 'Fix grammatical errors in markdown files by Gitfix'
         const prBody =
             'This pull request fixes grammatical errors in the markdown files. ' +
@@ -206,7 +205,9 @@ async function publishIntoQStash(
                 {original_line, correction}]\}
 
                 You should only correct what is given in the file, do not add any original text.
+                DO NOT perform any action if you detect code blocks, paths or links.
                 DO NOT alter any of the code blocks, codes, paths or links.
+                DO NOT change the indentation of the code blocks.
                 In the front matter section, change only the title and summary if they are given in the original file.
                 DO NOT change any of the code blocks, including the strings and comments inside the code block.
                 Change the errors line by line and do not merge lines. Do not copy the content of one line to the other.

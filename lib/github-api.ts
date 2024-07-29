@@ -103,6 +103,11 @@ export class Github_API {
         const headers = this.headers
         const defaultBranch = await this.getDefaultBranch(this.owner, this.repo)
         const head = await this.setBranch(forkedOwner, false)
+        if (await this.checkExistingPR(head,this.owner,this.repo)) {
+            console.log('Pull request already exists')
+            return
+        }
+
         const response = await fetch(url, {
             method: 'POST',
             headers: headers,
@@ -265,6 +270,19 @@ export class Github_API {
 
         const data = await response.json()
         return data.default_branch
+    }
+
+    async checkExistingPR(branch: string, targetOwner: string, targetRepo: string): Promise<boolean> {
+        const url = `https://api.github.com/repos/${targetOwner}/${targetRepo}/pulls?head=${this.owner}:${branch}&state=open`;
+        const response = await fetch(url, { headers: this.headers });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to check for existing PRs: ${response.status} - ${errorText}`);
+        }
+
+        const pulls = await response.json();
+        return pulls.length > 0;
     }
 
     // reposityory information
