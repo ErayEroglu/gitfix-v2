@@ -7,7 +7,6 @@ import OpenAI from 'openai'
 export async function GET(request: Request) {
     try {
         console.log('Received request to fix markdown files')
-        await clearDatabase()
 
         // Parse the JSON request body
         const { searchParams } = new URL(request.url)
@@ -33,17 +32,7 @@ export async function GET(request: Request) {
         let flag: boolean = true
         let counter = 0
         for (const filePath of Object.keys(github.md_files_content)) {
-            const isFixed = await isFileFixed(
-                owner + '@' + repo + '@' + filePath
-            )
             console.log(`Fixing file: ${filePath}`)
-            if (counter > github.fileLimit) {
-                console.log(
-                    'Max file limit reached, if you want to process more files, ' +
-                        'please run the app again.'
-                )
-                break
-            }
             const originalContent = github.md_files_content[filePath]
             await publishIntoQStash(
                 originalContent,
