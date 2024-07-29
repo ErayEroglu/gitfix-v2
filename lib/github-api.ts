@@ -64,19 +64,15 @@ export class Github_API {
         forkedRepo: string,
         flag: boolean
     ): Promise<void> {
-        const item = this.items.find((item) => item.path === filePath)
-        if (!item) {
-            throw new Error(`File ${filePath} not found in the repository.`)
-        }
-        console.log(forkedOwner, forkedRepo)
         const url = `https://api.github.com/repos/${forkedOwner}/${forkedRepo}/contents/${filePath}`
         const headers = this.headers
         const encodedContent = this.encodeBase64(content)
         const branch = await this.setBranch(forkedOwner, flag)
+        const sha = await this.getFileSHA(url, headers, branch)
         const body = JSON.stringify({
             message: `Update ${filePath}`,
             content: encodedContent,
-            sha: item.sha,
+            sha: sha,
             branch: branch,
         })
 
@@ -268,6 +264,21 @@ export class Github_API {
             throw new Error('could not fetch details')
         }
         return await response.json()
+    }
+
+    private async getFileSHA(url: string, headers: any, branch: string): Promise<string> {
+        const response = await fetch(`${url}?ref=${branch}`, {
+            method: 'GET',
+            headers: headers,
+        });
+    
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to get file SHA: ${response.status} - ${errorText}`);
+        }
+    
+        const fileData = await response.json();
+        return fileData.sha;
     }
 
     private getHeaders() {
