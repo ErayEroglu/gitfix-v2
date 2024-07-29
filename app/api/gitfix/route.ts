@@ -143,7 +143,7 @@ async function publishIntoQStash(file_content: string, filePath: string, forkedO
 
                 Explicity, the form of array will be this: 
                 \{corrections : [{
-                    "file": "${filePath}",
+                    "filepath": "${filePath}",
                     "originalContent": "${file_content}",
                     "forkedOwner": "${forkedOwner}",
                     "forkedRepo": "${forkedRepo}",
