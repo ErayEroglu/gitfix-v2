@@ -68,7 +68,7 @@ export class Github_API {
         if (!item) {
             throw new Error(`File ${filePath} not found in the repository.`)
         }
-
+        console.log(forkedOwner, forkedRepo)
         const url = `https://api.github.com/repos/${forkedOwner}/${forkedRepo}/contents/${filePath}`
         const headers = this.headers
         const encodedContent = this.encodeBase64(content)
