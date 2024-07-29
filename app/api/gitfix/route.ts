@@ -49,7 +49,6 @@ export async function GET(request: Request) {
                 break
             }
             const originalContent = github.md_files_content[filePath]
-            const metadata = { filePath, originalContent, forkedOwner, forkedRepo, owner, repo, auth }
             await publishIntoQStash(originalContent, filePath, forkedOwner, forkedRepo, owner, repo, auth)
             counter++
         }
@@ -83,9 +82,7 @@ export async function POST(request: Request){
         const decodedBody = JSON.parse(
             atob(body.body)
         ) as OpenAI.Chat.Completions.ChatCompletion
-        const corrections = decodedBody.choices[0].message.content as any
-
-        console.log('Received response:', decodedBody.choices[0].message.content)
+        const corrections = JSON.parse(decodedBody.choices[0].message.content as string).corrections
         const { filePath, originalContent, forkedOwner, forkedRepo, owner, repo, auth } = corrections[0]
         
         // const { filePath, originalContent, forkedOwner, forkedRepo, owner, repo, auth } = body.metadata || {}
@@ -93,7 +90,7 @@ export async function POST(request: Request){
             throw new Error('Missing metadata fields')
         }
         console.log('Received metadata:', filePath, forkedOwner, forkedRepo, owner, repo, auth)
-        const correctedContent = await parser(corrections.slice(1), originalContent);
+        const correctedContent = await parser(decodedBody, originalContent);
 
         const github = new Github_API(owner, repo, auth);
         await github.updateFileContent(filePath, correctedContent, forkedOwner, forkedRepo, false);
@@ -104,7 +101,7 @@ export async function POST(request: Request){
             'This pull request fixes grammatical errors in the markdown files. ' +
             'Changes are made by Gitfix, which is an AI-powered application, ' +
             'aims to help developers in their daily tasks.'
-        // await github.createPullRequest(prTitle, prBody, forkedOwner, forkedRepo)
+        await github.createPullRequest(prTitle, prBody, forkedOwner, forkedRepo)
         return new Response("OK", { status: 200 });
     } catch (error) {
         console.error('Error processing callback:', error)
@@ -185,7 +182,7 @@ async function parser(completion: OpenAI.Chat.Completions.ChatCompletion, file_c
 
     let suggestions
     try {
-        suggestions = JSON.parse(response as string).corrections
+        suggestions = JSON.parse(response as string).corrections.slice(1)
     } catch (parseError: any) {
         throw new Error(`Failed to parse JSON response: ${parseError.message}`)
     }
