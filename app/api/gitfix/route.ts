@@ -80,35 +80,32 @@ export async function GET(request: Request) {
 export async function POST(request: Request){
     try {
         const body = await request.json()
-        console.log('Received body:', body)
         const decodedBody = JSON.parse(
             atob(body.body)
         ) as OpenAI.Chat.Completions.ChatCompletion
+        const corrections = decodedBody.choices[0].message.content as any
 
-        // const { filePath, originalContent, forkedOwner, forkedRepo, owner, repo, auth } = body.metadata || {}
-        // if (!filePath || !originalContent || !forkedOwner || !forkedRepo || !owner || !repo || !auth) {
-        //     throw new Error('Missing metadata fields')
-        // }
-        // console.log('Received metadata:', filePath, forkedOwner, forkedRepo, owner, repo, auth)
-        // const correctedContent = await parser(decodedBody, originalContent);
-
-        // const github = new Github_API(owner, repo, auth);
-        // await github.updateFileContent(filePath, correctedContent, forkedOwner, forkedRepo, false);
-        // await addFixedFile(`${forkedOwner}@${forkedRepo}@${filePath}`);
-
-
-        return NextResponse.json(
-            { message: decodedBody.choices[0].message.content },
-            { status: 200 }
-        );
+        console.log('Received response:', decodedBody.choices[0].message.content)
+        const { filePath, originalContent, forkedOwner, forkedRepo, owner, repo, auth } = corrections[0]
         
-        // const prTitle = 'Fix grammatical errors in markdown files by Gitfix'
-        // const prBody =
-        //     'This pull request fixes grammatical errors in the markdown files. ' +
-        //     'Changes are made by Gitfix, which is an AI-powered application, ' +
-        //     'aims to help developers in their daily tasks.'
-        // // await github.createPullRequest(prTitle, prBody, forkedOwner, forkedRepo)
-        // return new Response("OK", { status: 200 });
+        // const { filePath, originalContent, forkedOwner, forkedRepo, owner, repo, auth } = body.metadata || {}
+        if (!filePath || !originalContent || !forkedOwner || !forkedRepo || !owner || !repo || !auth) {
+            throw new Error('Missing metadata fields')
+        }
+        console.log('Received metadata:', filePath, forkedOwner, forkedRepo, owner, repo, auth)
+        const correctedContent = await parser(corrections.slice(1), originalContent);
+
+        const github = new Github_API(owner, repo, auth);
+        await github.updateFileContent(filePath, correctedContent, forkedOwner, forkedRepo, false);
+        await addFixedFile(`${forkedOwner}@${forkedRepo}@${filePath}`);
+        
+        const prTitle = 'Fix grammatical errors in markdown files by Gitfix'
+        const prBody =
+            'This pull request fixes grammatical errors in the markdown files. ' +
+            'Changes are made by Gitfix, which is an AI-powered application, ' +
+            'aims to help developers in their daily tasks.'
+        // await github.createPullRequest(prTitle, prBody, forkedOwner, forkedRepo)
+        return new Response("OK", { status: 200 });
     } catch (error) {
         console.error('Error processing callback:', error)
         return new Response('Internal server error', { status: 500 })
@@ -149,6 +146,7 @@ async function publishIntoQStash(file_content: string, filePath: string, forkedO
                 Explicity, the form of array will be this: 
                 \{corrections : [{
                     "file": "${filePath}",
+                    "originalContent": "${file_content}",
                     "forkedOwner": "${forkedOwner}",
                     "forkedRepo": "${forkedRepo}",
                     "owner": "${owner}",
