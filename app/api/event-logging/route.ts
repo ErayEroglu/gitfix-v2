@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { clients, registerClient } from '@/app/api/logs/clients';
+import { clients, registerClient } from '@/app/api/event-logging/clients';
 
 export async function GET(request: Request) {
     const { readable, writable } = new TransformStream();

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { Github_API } from '@/lib/github-api'
 import { addFixedFile, isFileFixed, clearDatabase } from '@/lib/redis-utils'
 import { Client, openai, upstash } from '@upstash/qstash'
-import { broadcastMessage } from '../logs/clients'
+import { broadcastMessage } from '../event-logging/clients'
 
 import OpenAI from 'openai'
 
