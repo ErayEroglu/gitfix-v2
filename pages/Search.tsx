@@ -1,44 +1,47 @@
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/router'
-import { useSession, signOut } from 'next-auth/react'
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
+import { useSession, signOut } from 'next-auth/react';
 
 const Search = () => {
-    const [owner, setOwner] = useState('')
-    const [repo, setRepo] = useState('')
-    const [authToken, setAuthToken] = useState('')
-    const [isLoading, setIsLoading] = useState(false)
-    const [message, setMessage] = useState('')
-    const [color, setColor] = useState('')
+    const [owner, setOwner] = useState('');
+    const [repo, setRepo] = useState('');
+    const [authToken, setAuthToken] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [message, setMessage] = useState('');
+    const [color, setColor] = useState('');
     const [logs, setLogs] = useState<string[]>([]); // State for logs
     const router = useRouter();
     const { data: session } = useSession();
 
     useEffect(() => {
         if (session) {
-            setAuthToken(session.accessToken as string)
+            setAuthToken(session.accessToken as string);
         }
-    }, [session])
+    }, [session]);
 
     useEffect(() => {
-        // Set up EventSource for server-sent events
-        const eventSource = new EventSource('/api/logs'); // Adjust the endpoint as needed
+        // Setting up the EventSource connection
+        const eventSource = new EventSource('/api/logs');
+
         eventSource.onmessage = (event) => {
             setLogs((prevLogs) => [...prevLogs, event.data]);
         };
+
         eventSource.onerror = (error) => {
-            console.error('SSE error:', error);
+            console.error('EventSource error:', error);
             eventSource.close();
         };
+
         return () => {
-            eventSource.close();
+            eventSource.close(); // Cleanup on component unmount
         };
     }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
+        e.preventDefault();
         if (owner && repo && authToken) {
-            setIsLoading(true)
-            setMessage('')
+            setIsLoading(true);
+            setMessage('');
             try {
                 const response = await fetch(
                     `/api/gitfix?owner=${owner}&repo=${repo}&auth=${authToken}`,
@@ -48,29 +51,29 @@ const Search = () => {
                             'Content-Type': 'application/json',
                         },
                     }
-                )
+                );
 
-                const data = await response.json()
+                const data = await response.json();
                 if (response.ok) {
-                    setColor('green')
-                    setMessage(data.message)
+                    setColor('green');
+                    setMessage(data.message);
                 } else {
-                    console.error('Error:', data)
-                    setMessage(`Error: ${data.message}`)
+                    console.error('Error:', data);
+                    setMessage(`Error: ${data.message}`);
                 }
             } catch (error) {
-                setColor('red')
-                console.error('Error:', error)
-                setMessage('An unexpected error occurred.')
+                setColor('red');
+                console.error('Error:', error);
+                setMessage('An unexpected error occurred.');
             } finally {
-                setIsLoading(false)
+                setIsLoading(false);
             }
         } else {
             setMessage(
                 'Please enter both owner and repository name, and ensure you are logged in.'
-            )
+            );
         }
-    }
+    };
 
     return (
         <div
@@ -128,28 +131,26 @@ const Search = () => {
             >
                 Log Out
             </button>
-
-            <div style={{ marginTop: '30px', width: '80%' }}>
-                <h2>Logs:</h2>
-                <div
-                    style={{
-                        border: '1px solid #ddd',
-                        padding: '10px',
-                        borderRadius: '4px',
-                        backgroundColor: '#f9f9f9',
-                        maxHeight: '200px',
-                        overflowY: 'auto',
-                    }}
-                >
+            <div
+                style={{
+                    marginTop: '50px',
+                    width: '80%',
+                    maxHeight: '300px',
+                    overflowY: 'auto',
+                    backgroundColor: '#f1f1f1',
+                    padding: '20px',
+                    borderRadius: '5px',
+                }}
+            >
+                <h2>Logs</h2>
+                <pre>
                     {logs.map((log, index) => (
-                        <p key={index} style={{ margin: '5px 0' }}>
-                            {log}
-                        </p>
+                        <div key={index}>{log}</div>
                     ))}
-                </div>
+                </pre>
             </div>
         </div>
     );
-}
+};
 
-export default Search
+export default Search;

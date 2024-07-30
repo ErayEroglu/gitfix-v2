@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { Github_API } from '@/lib/github-api'
 import { addFixedFile, isFileFixed, clearDatabase } from '@/lib/redis-utils'
 import { Client, openai, upstash } from '@upstash/qstash'
-import  { broadcastMessage } from '@/app/api/log/route'
+import { broadcastMessage } from '../logs/route'
 
 import OpenAI from 'openai'
 
@@ -50,7 +50,6 @@ export async function GET(request: Request) {
         }
         if (counter === 0) {
             console.log('No files to fix')
-            broadcastMessage('No files to fix')
             return NextResponse.json(
                 {
                     message:
@@ -147,7 +146,6 @@ async function publishIntoQStash(
     repo: string,
     auth: string
 ) {
-    broadcastMessage('Task is sending to QStash')
     const qstashToken: string = process.env.QSTASH_TOKEN as string
     const openaiToken: string = process.env.OPENAI_API_KEY as string
     if (!qstashToken || !openaiToken) {
