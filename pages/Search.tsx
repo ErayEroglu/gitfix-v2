@@ -22,7 +22,7 @@ const Search = () => {
     useEffect(() => {
         // Setting up the EventSource connection
         console.log('Connecting to EventSource...');
-        const eventSource = new EventSource('/api/logs');
+        const eventSource = new EventSource('/api/event-logging');
         eventSource.onmessage = (event) => {
             setLogs((prevLogs) => [...prevLogs, event.data]);
             console.log('Received message:', event.data);
