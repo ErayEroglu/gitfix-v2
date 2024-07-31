@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { clients, registerClient } from '@/app/api/event-logging/clients';
 
+export const config = {
+    runtime: 'edge', // or 'nodejs'
+    ssr: false,      // Disable server-side rendering
+};
+
 export async function GET(request: Request) {
     const { readable, writable } = new TransformStream();
 
