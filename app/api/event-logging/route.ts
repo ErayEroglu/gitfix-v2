@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { clients, registerClient } from '@/app/api/event-logging/clients';
 
+export const runtime = 'edge';
+
 export async function GET(request: Request) {
     const { readable, writable } = new TransformStream();
+
 
     // Get the writer from the writable stream
     const writer = writable.getWriter();
