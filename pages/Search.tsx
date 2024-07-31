@@ -48,9 +48,32 @@ const Search = () => {
 
                             // Try parsing the accumulated data
                             try {
-                                const parsedData = JSON.parse(accumulatedData);
-                                logMessages.push(parsedData.message);
-                                accumulatedData = ''; // Reset accumulated data after successful parse
+                                let data = accumulatedData;
+                                let endIndex: number;
+
+                                // Loop to handle multiple JSON objects or incomplete data
+                                while (true) {
+                                    // Find the end of the JSON object
+                                    try {
+                                        endIndex = data.indexOf('}\n') + 1;
+                                        if (endIndex === 0) break;
+
+                                        // Extract JSON object
+                                        const jsonStr = data.substring(0, endIndex);
+                                        const parsedData = JSON.parse(jsonStr);
+
+                                        // Update logs
+                                        logMessages.push(parsedData.message);
+                                        
+                                        // Remove the processed JSON object from the data
+                                        data = data.substring(endIndex).trim();
+                                    } catch (parseError) {
+                                        break; // Break if JSON parsing fails
+                                    }
+                                }
+
+                                // Update accumulatedData with remaining data
+                                accumulatedData = data;// Reset accumulated data after successful parse
                             } catch (parseError) {
                                 // If parsing fails, continue accumulating data
                                 console.warn('Accumulated data not yet complete or valid JSON:', parseError);
