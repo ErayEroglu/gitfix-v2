@@ -21,10 +21,11 @@ const Search = () => {
 
     useEffect(() => {
         // Setting up the EventSource connection
+        console.log('Connecting to EventSource...');
         const eventSource = new EventSource('/api/logs');
-
         eventSource.onmessage = (event) => {
             setLogs((prevLogs) => [...prevLogs, event.data]);
+            console.log('Received message:', event.data);
         };
 
         eventSource.onerror = (error) => {
