@@ -19,30 +19,12 @@ const Search = () => {
         }
     }, [session]);
 
-    useEffect(() => {
-        // Setting up the EventSource connection
-        console.log('Connecting to EventSource...');
-        const eventSource = new EventSource('/api/event-logging');
-        eventSource.onmessage = (event) => {
-            setLogs((prevLogs) => [...prevLogs, event.data]);
-            console.log('Received message:', event.data);
-        };
-
-        eventSource.onerror = (error) => {
-            console.error('EventSource error:', error);
-            eventSource.close();
-        };
-
-        return () => {
-            eventSource.close(); // Cleanup on component unmount
-        };
-    }, []);
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (owner && repo && authToken) {
             setIsLoading(true);
             setMessage('');
+            setLogs([]); // Clear logs when a new request is made
             try {
                 const response = await fetch(
                     `/api/gitfix?owner=${owner}&repo=${repo}&auth=${authToken}`,
@@ -54,13 +36,28 @@ const Search = () => {
                     }
                 );
 
-                const data = await response.json();
                 if (response.ok) {
+                    const reader = response.body?.getReader();
+                    const decoder = new TextDecoder();
+                    let logMessages: string[] = [];
+
+                    if (reader) {
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            const chunk = decoder.decode(value, { stream: true });
+                            const parsedChunk = JSON.parse(chunk);
+                            logMessages.push(parsedChunk.message);
+                            setLogs(logMessages); // Update logs state
+                        }
+                    }
+
                     setColor('green');
-                    setMessage(data.message);
+                    setMessage('Processing complete.');
                 } else {
-                    console.error('Error:', data);
-                    setMessage(`Error: ${data.message}`);
+                    const errorData = await response.json();
+                    console.error('Error:', errorData);
+                    setMessage(`Error: ${errorData.message}`);
                 }
             } catch (error) {
                 setColor('red');
@@ -143,12 +140,9 @@ const Search = () => {
                     borderRadius: '5px',
                 }}
             >
-                <h2>Logs</h2>
-                <pre>
-                    {logs.map((log, index) => (
-                        <div key={index}>{log}</div>
-                    ))}
-                </pre>
+                {logs.map((log, index) => (
+                    <p key={index}>{log}</p>
+                ))}
             </div>
         </div>
     );

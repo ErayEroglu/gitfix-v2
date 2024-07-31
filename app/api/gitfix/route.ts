@@ -33,37 +33,53 @@ export async function GET(request: Request) {
         const forkedRepo = forked_repo_info[1]
         await github.getFileContent()
 
-        let flag: boolean = true
-        let counter = 0
-        for (const filePath of Object.keys(github.md_files_content)) {
-            console.log(`Fixing file: ${filePath}`)
-            const originalContent = github.md_files_content[filePath]
-            await publishIntoQStash(
-                originalContent,
-                filePath,
-                forkedOwner,
-                forkedRepo,
-                owner,
-                repo,
-                auth
-            )
-            counter++
-        }
-        if (counter === 0) {
-            console.log('No files to fix')
-            return NextResponse.json(
-                {
-                    message:
-                        'There is not any markdown file, or all of them are already fixed.',
-                },
-                { status: 200 }
-            )
+        const encoder = new TextEncoder()
+        
+        // Create a ReadableStream to stream data
+        const customReadable = new ReadableStream({
+            async start(controller) {
+                let counter = 0
+                for (const filePath of Object.keys(github.md_files_content)) {
+                    console.log(`Fixing file: ${filePath}`)
+                    const originalContent = github.md_files_content[filePath]
+                    await publishIntoQStash(
+                        originalContent,
+                        filePath,
+                        forkedOwner,
+                        forkedRepo,
+                        owner,
+                        repo,
+                        auth
+                    )
+                    counter++
+                    controller.enqueue(encoder.encode(JSON.stringify({
+                        message: `Processing file: ${filePath}`
+                    })))
+                }
+                if (counter === 0) {
+                    controller.enqueue(encoder.encode(JSON.stringify({
+                        message: 'No files to fix'
+                    })))
+                } else {
+                    controller.enqueue(encoder.encode(JSON.stringify({
+                        message: 'Pull request created successfully'
+                    })))
+                }
+                controller.close()
+            },
+        })
+
+        // Custom headers
+        const headers = {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+            'Access-Control-Allow-Credentials': 'true',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET',
+            'Access-Control-Allow-Headers': 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version',
         }
 
-        return NextResponse.json(
-            { message: 'Pull request created successfully' },
-            { status: 200 }
-        )
+        return new Response(customReadable, { headers })
     } catch (error) {
         console.error('Error handling GET request:', error)
         return NextResponse.json(
