@@ -1,34 +1,41 @@
 import { NextResponse } from 'next/server';
-import { clients, registerClient } from '@/app/api/event-logging/clients';
 
-export const runtime = 'edge';
+let clients: any[] = [];
 
 export async function GET(request: Request) {
-    const { readable, writable } = new TransformStream();
+    const stream = new ReadableStream({
+        start(controller) {
+            clients.push(controller);
 
-    // Get the writer from the writable stream
-    const writer = writable.getWriter();
+            controller.enqueue(`data: Connection established\n\n`);
 
-    // Register the client for broadcasting
-    registerClient(writer);
-
-    // Example: Sending initial message
-    writer.write(`data: Connection established. Logs will be streamed.\n\n`);
-
-    // Clean up when the client disconnects
-    request.signal.addEventListener('abort', () => {
-        const index = clients.indexOf(writer);
-        if (index !== -1) {
-            clients.splice(index, 1);
-        }
-        writer.close();
+            request.signal.addEventListener('abort', () => {
+                const index = clients.indexOf(controller);
+                if (index > -1) {
+                    clients.splice(index, 1);
+                }
+                controller.close();
+            });
+        },
     });
 
-    return new NextResponse(readable, {
+    return new NextResponse(stream, {
         headers: {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',
             'Connection': 'keep-alive',
         },
+    });
+}
+
+export const runtime = 'edge';
+
+export function broadcastMessage(message: string) {
+    clients.forEach((controller) => {
+        try {
+            controller.enqueue(`data: ${message}\n\n`);
+        } catch (error) {
+            console.error('Error broadcasting message:', error);
+        }
     });
 }
