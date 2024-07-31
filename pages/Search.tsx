@@ -39,43 +39,36 @@ const Search = () => {
                     const decoder = new TextDecoder();
                     let accumulatedData = '';
                     let logMessages: string[] = [];
-
+    
                     if (reader) {
                         while (true) {
                             const { done, value } = await reader.read();
                             if (done) break;
                             accumulatedData += decoder.decode(value, { stream: true });
-
-                            // Try parsing the accumulated data
+                            console.log('Accumulated data:', accumulatedData); // Log accumulated data
+    
                             try {
                                 let data = accumulatedData;
                                 let endIndex: number;
-
-                                // Loop to handle multiple JSON objects or incomplete data
+    
                                 while (true) {
-                                    // Find the end of the JSON object
                                     try {
                                         endIndex = data.indexOf('}\n') + 1;
                                         if (endIndex === 0) break;
-
-                                        // Extract JSON object
+    
                                         const jsonStr = data.substring(0, endIndex);
                                         const parsedData = JSON.parse(jsonStr);
-
-                                        // Update logs
+    
                                         logMessages.push(parsedData.message);
                                         
-                                        // Remove the processed JSON object from the data
                                         data = data.substring(endIndex).trim();
                                     } catch (parseError) {
-                                        break; // Break if JSON parsing fails
+                                        break;
                                     }
                                 }
-
-                                // Update accumulatedData with remaining data
-                                accumulatedData = data;// Reset accumulated data after successful parse
+    
+                                accumulatedData = data;
                             } catch (parseError) {
-                                // If parsing fails, continue accumulating data
                                 console.warn('Accumulated data not yet complete or valid JSON:', parseError);
                             }
                         }
