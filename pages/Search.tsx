@@ -9,6 +9,7 @@ const Search = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [message, setMessage] = useState('');
     const [color, setColor] = useState('');
+    const [logs, setLogs] = useState<string[]>([]); // State for logs
     const router = useRouter();
     const { data: session } = useSession();
 
@@ -23,6 +24,7 @@ const Search = () => {
         if (owner && repo && authToken) {
             setIsLoading(true);
             setMessage('');
+            setLogs([]); // Clear logs when a new request is made
             try {
                 const response = await fetch(
                     `/api/gitfix?owner=${owner}&repo=${repo}&auth=${authToken}`,
@@ -39,34 +41,35 @@ const Search = () => {
                     const decoder = new TextDecoder();
                     let accumulatedData = '';
                     let logMessages: string[] = [];
-    
+
                     if (reader) {
                         while (true) {
                             const { done, value } = await reader.read();
                             if (done) break;
                             accumulatedData += decoder.decode(value, { stream: true });
-                            console.log('Accumulated data:', accumulatedData); // Log accumulated data
-    
+                            console.log('Accumulated data:', accumulatedData);
+
                             try {
                                 let data = accumulatedData;
                                 let endIndex: number;
-    
+
                                 while (true) {
                                     try {
                                         endIndex = data.indexOf('}\n') + 1;
                                         if (endIndex === 0) break;
-    
+
                                         const jsonStr = data.substring(0, endIndex);
                                         const parsedData = JSON.parse(jsonStr);
-    
+
                                         logMessages.push(parsedData.message);
-                                        
+                                        setLogs([...logMessages]); // Update logs state
+
                                         data = data.substring(endIndex).trim();
                                     } catch (parseError) {
                                         break;
                                     }
                                 }
-    
+
                                 accumulatedData = data;
                             } catch (parseError) {
                                 console.warn('Accumulated data not yet complete or valid JSON:', parseError);
@@ -151,6 +154,21 @@ const Search = () => {
             >
                 Log Out
             </button>
+            <div
+                style={{
+                    marginTop: '50px',
+                    width: '80%',
+                    maxHeight: '300px',
+                    overflowY: 'auto',
+                    backgroundColor: '#f1f1f1',
+                    padding: '20px',
+                    borderRadius: '5px',
+                }}
+            >
+                {logs.map((log, index) => (
+                    <p key={index}>{log}</p>
+                ))}
+            </div>
         </div>
     );
 };
