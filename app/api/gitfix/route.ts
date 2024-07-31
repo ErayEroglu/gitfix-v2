@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server'
 import { Github_API } from '@/lib/github-api'
 import { addFixedFile, isFileFixed, clearDatabase } from '@/lib/redis-utils'
 import { Client, openai, upstash } from '@upstash/qstash'
-import { broadcastMessage } from '../event-logging/route'
+import { broadcastMessage, registerClient} from '../event-logging/clients'
 
 import OpenAI from 'openai'
 
 export async function GET(request: Request) {
     try {
+        registerClient(new TransformStream().writable.getWriter())
         console.log('Received request to fix markdown files')
         broadcastMessage('Received request to fix markdown files')
         await clearDatabase()
