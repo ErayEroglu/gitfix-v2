@@ -2,15 +2,13 @@ import { NextResponse } from 'next/server'
 import { Github_API } from '@/lib/github-api'
 import { addFixedFile, isFileFixed, clearDatabase } from '@/lib/redis-utils'
 import { Client, openai, upstash } from '@upstash/qstash'
-import { broadcastMessage, registerClient} from '../event-logging/clients'
 
 import OpenAI from 'openai'
 
 export async function GET(request: Request) {
     try {
-        registerClient(new TransformStream().writable.getWriter())
-        console.log('Received request to fix markdown files')
-        broadcastMessage('Received request to fix markdown files')
+        console.log('Received request to fix markdown files')        
+        //TODO: Remove this 
         await clearDatabase()
         // Parse the JSON request body
         const { searchParams } = new URL(request.url)
@@ -70,7 +68,7 @@ export async function GET(request: Request) {
         })
 
         // Custom headers
-        const headers = { 'Content-Type': 'text/html; charset=utf-8', 
+        const headers = { 'Content-Type': 'application/json', 
             'Cache-Control': 'no-cache',
             'Access-Control-Allow-Credentials': 'true',
             'Access-Control-Allow-Origin': '*',

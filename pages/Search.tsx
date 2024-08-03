@@ -25,38 +25,72 @@ const Search = () => {
             setIsLoading(true);
             setMessage('');
             setLogs([]); // Clear logs when a new request is made
-
-            const eventSource = new EventSource(`/api/gitfix?owner=${owner}&repo=${repo}&auth=${authToken}`);
-
-            eventSource.onmessage = (event) => {
-                console.log('Received event:', event.data);
-
-                try {
-                    const data = JSON.parse(event.data);
-                    if (data.message) {
-                        setLogs((prevLogs) => [...prevLogs, data.message]);
+            try {
+                const response = await fetch(
+                    `/api/gitfix?owner=${owner}&repo=${repo}&auth=${authToken}`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
                     }
-                } catch (error) {
-                    console.error('Failed to parse event data:', error);
+                );
+
+                if (response.ok) {
+                    const reader = response.body?.getReader();
+                    const decoder = new TextDecoder();
+                    let accumulatedData = '';
+                    let logMessages: string[] = [];
+
+                    if (reader) {
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            accumulatedData += decoder.decode(value, { stream: true });
+                            console.log('Accumulated data:', accumulatedData);
+
+                            try {
+                                let data = accumulatedData;
+                                let endIndex: number;
+
+                                while (true) {
+                                    try {
+                                        endIndex = data.indexOf('}\n') + 1;
+                                        if (endIndex === 0) break;
+
+                                        const jsonStr = data.substring(0, endIndex);
+                                        const parsedData = JSON.parse(jsonStr);
+
+                                        logMessages.push(parsedData.message);
+                                        setLogs([...logMessages]); // Update logs state
+
+                                        data = data.substring(endIndex).trim();
+                                    } catch (parseError) {
+                                        break;
+                                    }
+                                }
+
+                                accumulatedData = data;
+                            } catch (parseError) {
+                                console.warn('Accumulated data not yet complete or valid JSON:', parseError);
+                            }
+                        }
+                    }
+
+                    setColor('green');
+                    setMessage('Processing complete.');
+                } else {
+                    const errorData = await response.json();
+                    console.error('Error:', errorData);
+                    setMessage(`Error: ${errorData.message}`);
                 }
-            };
-
-            eventSource.onerror = (error) => {
-                console.error('EventSource error:', error);
+            } catch (error) {
                 setColor('red');
+                console.error('Error:', error);
                 setMessage('An unexpected error occurred.');
+            } finally {
                 setIsLoading(false);
-                eventSource.close();
-            };
-
-            eventSource.onopen = () => {
-                console.log('EventSource connection opened');
-            };
-
-            // Handle manual cleanup
-            return () => {
-                eventSource.close();
-            };
+            }
         } else {
             setMessage(
                 'Please enter both owner and repository name, and ensure you are logged in.'
