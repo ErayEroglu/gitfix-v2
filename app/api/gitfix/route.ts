@@ -7,8 +7,8 @@ import OpenAI from 'openai'
 
 export async function GET(request: Request) {
     try {
-        console.log('Received request to fix markdown files')        
-        //TODO: Remove this 
+        console.log('Received request to fix markdown files')
+        //TODO: Remove this
         await clearDatabase()
         // Parse the JSON request body
         const { searchParams } = new URL(request.url)
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
         await github.getFileContent()
 
         const encoder = new TextEncoder()
-        
+
         // Create a ReadableStream to stream data
         const customReadable = new ReadableStream({
             async start(controller) {
@@ -50,31 +50,45 @@ export async function GET(request: Request) {
                         auth
                     )
                     counter++
-                    controller.enqueue(encoder.encode(JSON.stringify({
-                        message: `Processing file: ${filePath}`
-                    })))
+                    controller.enqueue(
+                        encoder.encode(
+                            JSON.stringify({
+                                message: `Processing file: ${filePath}`,
+                            })
+                        )
+                    )
                 }
                 if (counter === 0) {
-                    controller.enqueue(encoder.encode(JSON.stringify({
-                        message: 'No files to fix'
-                    })))
+                    controller.enqueue(
+                        encoder.encode(
+                            JSON.stringify({
+                                message: 'No files to fix',
+                            })
+                        )
+                    )
                 } else {
-                    controller.enqueue(encoder.encode(JSON.stringify({
-                        message: 'Pull request created successfully'
-                    })))
+                    controller.enqueue(
+                        encoder.encode(
+                            JSON.stringify({
+                                message: 'Pull request created successfully',
+                            })
+                        )
+                    )
                 }
                 controller.close()
             },
         })
 
         // Custom headers
-        const headers = { 'Content-Type': 'application/json', 
+        const headers = {
+            'Content-Type': 'application/json',
             'Cache-Control': 'no-cache',
             'Access-Control-Allow-Credentials': 'true',
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET,OPTIONS,PATCH,DELETE,POST,PUT',
-            'Access-Control-Allow-Headers':'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-           }
+            'Access-Control-Allow-Headers':
+                'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version',
+        }
 
         return new Response(customReadable, { headers })
     } catch (error) {
@@ -92,7 +106,7 @@ export async function POST(request: Request) {
         const decodedBody = JSON.parse(
             atob(body.body)
         ) as OpenAI.Chat.Completions.ChatCompletion
-        
+
         const corrections = JSON.parse(
             decodedBody.choices[0].message.content as string
         ).corrections

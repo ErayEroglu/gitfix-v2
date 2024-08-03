@@ -1,30 +1,30 @@
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
-import { useSession, signOut } from 'next-auth/react';
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/router'
+import { useSession, signOut } from 'next-auth/react'
 
 const Search = () => {
-    const [owner, setOwner] = useState('');
-    const [repo, setRepo] = useState('');
-    const [authToken, setAuthToken] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [message, setMessage] = useState('');
-    const [color, setColor] = useState('');
-    const [logs, setLogs] = useState<string[]>([]); // State for logs
-    const router = useRouter();
-    const { data: session } = useSession();
+    const [owner, setOwner] = useState('')
+    const [repo, setRepo] = useState('')
+    const [authToken, setAuthToken] = useState('')
+    const [isLoading, setIsLoading] = useState(false)
+    const [message, setMessage] = useState('')
+    const [color, setColor] = useState('')
+    const [logs, setLogs] = useState<string[]>([]) // State for logs
+    const router = useRouter()
+    const { data: session } = useSession()
 
     useEffect(() => {
         if (session) {
-            setAuthToken(session.accessToken as string);
+            setAuthToken(session.accessToken as string)
         }
-    }, [session]);
+    }, [session])
 
     const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+        e.preventDefault()
         if (owner && repo && authToken) {
-            setIsLoading(true);
-            setMessage('');
-            setLogs([]); // Clear logs when a new request is made
+            setIsLoading(true)
+            setMessage('')
+            setLogs([]) // Clear logs when a new request is made
             try {
                 const response = await fetch(
                     `/api/gitfix?owner=${owner}&repo=${repo}&auth=${authToken}`,
@@ -34,69 +34,81 @@ const Search = () => {
                             'Content-Type': 'application/json',
                         },
                     }
-                );
+                )
 
                 if (response.ok) {
-                    const reader = response.body?.getReader();
-                    const decoder = new TextDecoder();
-                    let accumulatedData = '';
-                    let logMessages: string[] = [];
+                    const reader = response.body?.getReader()
+                    const decoder = new TextDecoder()
+                    let accumulatedData = ''
+                    let logMessages: string[] = []
 
                     if (reader) {
                         while (true) {
-                            const { done, value } = await reader.read();
-                            if (done) break;
-                            accumulatedData += decoder.decode(value, { stream: true });
-                            console.log('Accumulated data:', accumulatedData);
+                            const { done, value } = await reader.read()
+                            if (done) break
+                            accumulatedData += decoder.decode(value, {
+                                stream: true,
+                            })
+                            console.log('Accumulated data:', accumulatedData)
 
                             try {
-                                let data = accumulatedData;
-                                let endIndex: number;
+                                let data = accumulatedData
+                                let endIndex: number
 
                                 while (true) {
                                     try {
-                                        endIndex = data.indexOf('}\n') + 1;
-                                        if (endIndex === 0) break;
+                                        endIndex = data.indexOf('}\n') + 1
+                                        if (endIndex === 0) break
 
-                                        const jsonStr = data.substring(0, endIndex);
-                                        const parsedData = JSON.parse(jsonStr);
+                                        const jsonStr = data.substring(
+                                            0,
+                                            endIndex
+                                        )
+                                        const parsedData = JSON.parse(jsonStr)
 
-                                        logMessages.push(parsedData.message);
-                                        setLogs([...logMessages]); // Update logs state
+                                        logMessages.push(parsedData.message)
+                                        setLogs([...logMessages]) // Update logs state
+                                        console.log(
+                                            'Updated logs:',
+                                            logMessages
+                                        ) // Debugging log
 
-                                        data = data.substring(endIndex).trim();
+                                        data = data.substring(endIndex).trim()
                                     } catch (parseError) {
-                                        break;
+                                        break
                                     }
                                 }
 
-                                accumulatedData = data;
+                                accumulatedData = data
                             } catch (parseError) {
-                                console.warn('Accumulated data not yet complete or valid JSON:', parseError);
+                                console.warn(
+                                    'Accumulated data not yet complete or valid JSON:',
+                                    parseError
+                                )
                             }
                         }
                     }
 
-                    setColor('green');
-                    setMessage('Processing complete.');
+                    setColor('green')
+                    setMessage('Processing complete.')
                 } else {
-                    const errorData = await response.json();
-                    console.error('Error:', errorData);
-                    setMessage(`Error: ${errorData.message}`);
+                    const errorData = await response.json()
+                    console.error('Error:', errorData)
+                    setMessage(`Error: ${errorData.message}`)
                 }
             } catch (error) {
-                setColor('red');
-                console.error('Error:', error);
-                setMessage('An unexpected error occurred.');
+                setColor('red')
+                console.error('Error:', error)
+                setMessage('An unexpected error occurred.')
             } finally {
-                setIsLoading(false);
+                setIsLoading(false)
             }
         } else {
             setMessage(
                 'Please enter both owner and repository name, and ensure you are logged in.'
-            );
+            )
         }
-    };
+    }
 
     return (
         <div
@@ -170,7 +182,7 @@ const Search = () => {
                 ))}
             </div>
         </div>
-    );
-};
+    )
+}
 
-export default Search;
+export default Search
