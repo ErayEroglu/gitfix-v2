@@ -166,6 +166,7 @@ export async function POST(request: Request) {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
+                    id: `${owner}@${repo}`,
                     logs: ['Pull request created successfully.'] 
                 }),
             })
