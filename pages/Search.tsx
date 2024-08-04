@@ -10,7 +10,7 @@ const Search = () => {
     const [message, setMessage] = useState('')
     const [color, setColor] = useState('')
     const [logs, setLogs] = useState<string[]>([]) 
-    const [polling, setPolling] = useState(true) 
+    const [polling, setPolling] = useState(false) 
     const { data: session } = useSession()
 
     useEffect(() => {
@@ -76,6 +76,7 @@ const Search = () => {
                 )
 
                 if (response.ok) {
+                    setPolling(true)
                     const reader = response.body?.getReader()
                     const decoder = new TextDecoder()
                     let accumulatedData = ''
