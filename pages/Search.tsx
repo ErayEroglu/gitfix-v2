@@ -9,8 +9,8 @@ const Search = () => {
     const [isLoading, setIsLoading] = useState(false)
     const [message, setMessage] = useState('')
     const [color, setColor] = useState('')
-    const [logs, setLogs] = useState<string[]>([]) // State for logs
-    const router = useRouter()
+    const [logs, setLogs] = useState<string[]>([]) 
+    const [polling, setPolling] = useState(true) 
     const { data: session } = useSession()
 
     useEffect(() => {
@@ -18,6 +18,38 @@ const Search = () => {
             setAuthToken(session.accessToken as string)
         }
     }, [session])
+
+    useEffect(() => {
+        let intervalId: NodeJS.Timeout | null = null
+        if (polling) {
+            intervalId = setInterval(async () => {
+                try {
+                    const response = await fetch('/api/status')
+                    if (response.ok) {
+                        const data = await response.json()
+                        if (data.logs) {
+                            setLogs((prevLogs) => [...prevLogs, ...data.logs])
+                        }
+                        if (data.status === 'completed') {
+                            setPolling(false)
+                            setColor('green')
+                            setMessage('All files are processed. The pull request has been created.')
+                        }
+                    } else {
+                        console.error('Failed to fetch status:', await response.text())
+                    }
+                } catch (error) {
+                    console.error('Polling error:', error)
+                }
+            }, 15000) 
+        }
+
+        return () => {
+            if (intervalId) {
+                clearInterval(intervalId)
+            }
+        }
+    }, [polling])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()

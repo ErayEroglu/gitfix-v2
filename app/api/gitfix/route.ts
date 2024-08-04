@@ -33,7 +33,9 @@ export async function GET(request: Request) {
         const customReadable = new ReadableStream({
             async start(controller) {
                 let counter = 0
+                let numberOfFiles =  Object.keys(github.md_files_content).length
                 for (const filePath of Object.keys(github.md_files_content)) {
+                    counter++
                     const originalContent = github.md_files_content[filePath]
                     await publishIntoQStash(
                         originalContent,
@@ -42,14 +44,14 @@ export async function GET(request: Request) {
                         forkedRepo,
                         owner,
                         repo,
-                        auth
+                        auth,
+                        counter === numberOfFiles
                     )
-                    counter++
                     controller.enqueue(
                         encoder.encode(
                             JSON.stringify({
-                                message: `Processing file: ${filePath}`,
-                            })
+                                message: `Selected file : ${filePath}`,
+                            }) 
                         )
                     )
                 }
@@ -97,99 +99,85 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
     try {
-        const encoder = new TextEncoder()
-        const customReadable = new ReadableStream({
-            async start(controller) {
-                try {
-                    const body = await request.json()
-                    const decodedBody = JSON.parse(
-                        atob(body.body)
-                    ) as OpenAI.Chat.Completions.ChatCompletion
+        const body = await request.json()
+        const decodedBody = JSON.parse(
+            atob(body.body)
+        ) as OpenAI.Chat.Completions.ChatCompletion
 
-                    const corrections = JSON.parse(
-                        decodedBody.choices[0].message.content as string
-                    ).corrections
+        const corrections = JSON.parse(
+            decodedBody.choices[0].message.content as string
+        ).corrections
 
-                    const filePath = corrections[0].filepath
-                    const originalContent = corrections[0].originalContent
-                    const forkedOwner = corrections[0].forkedOwner
-                    const forkedRepo = corrections[0].forkedRepo
-                    const owner = corrections[0].owner
-                    const repo = corrections[0].repo
-                    const auth = corrections[0].auth
+        const filePath = corrections[0].filepath
+        const originalContent = corrections[0].originalContent
+        const forkedOwner = corrections[0].forkedOwner
+        const forkedRepo = corrections[0].forkedRepo
+        const owner = corrections[0].owner
+        const repo = corrections[0].repo
+        const auth = corrections[0].auth
+        const isLastFile = corrections[0].isLastFile
 
-                    if (
-                        !filePath ||
-                        !originalContent ||
-                        !forkedOwner ||
-                        !forkedRepo ||
-                        !owner ||
-                        !repo ||
-                        !auth
-                    ) {
-                        throw new Error('Missing metadata fields')
-                    }
-                    controller.enqueue(
-                        encoder.encode(
-                            JSON.stringify({
-                                message: `Corrected content for ${filePath} is being processed, uploading to the repository.`,
-                            })
-                        )
-                    )
-                    const correctedContent = await parser(decodedBody, originalContent)
-
-                    const github = new Github_API(owner, repo, auth)
-                    await github.initializeRepoDetails()
-
-                    await github.updateFileContent(
-                        filePath,
-                        correctedContent,
-                        forkedOwner,
-                        forkedRepo,
-                        true
-                    )
-                    await addFixedFile(`${forkedOwner}@${forkedRepo}@${filePath}`)
-                    const prTitle = 'Fix grammatical errors in markdown files by Gitfix'
-                    const prBody =
-                        'This pull request fixes grammatical errors in the markdown files. ' +
-                        'Changes are made by Gitfix, which is an AI-powered application, ' +
-                        'aims to help developers in their daily tasks.'
-                    await github.createPullRequest(prTitle, prBody, forkedOwner, forkedRepo)
-                    controller.enqueue(
-                        encoder.encode(
-                            JSON.stringify({
-                                message: 'Pull request created successfully',
-                            })
-                        )
-                    )
-                    controller.close()
-                } catch (error) {
-                    controller.enqueue(
-                        encoder.encode(
-                            JSON.stringify({
-                                message: 'Error occurred during the generation of pull request. OpeanAI model might have failed to generate the response, please try again.',
-                                error: error,
-                            })
-                        )
-                    )
-                    controller.close()
-                }
-            }
-        })
-
-        const headers = {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache',
-            'Access-Control-Allow-Credentials': 'true',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET,OPTIONS,PATCH,DELETE,POST,PUT',
-            'Access-Control-Allow-Headers':
-                'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version',
+        if (
+            !filePath ||
+            !originalContent ||
+            !forkedOwner ||
+            !forkedRepo ||
+            !owner ||
+            !repo ||
+            !auth ||
+            !isLastFile
+        ) {
+            throw new Error('Missing metadata fields')
         }
+        console.log(
+            'Received metadata:',
+            filePath,
+            forkedOwner,
+            forkedRepo,
+            owner,
+            repo,
+            auth,
+            isLastFile
+        )
+        const correctedContent = await parser(decodedBody, originalContent)
 
-        return new Response(customReadable, { headers })
+        const github = new Github_API(owner, repo, auth)
+        await github.initializeRepoDetails()
+
+        await github.updateFileContent(
+            filePath,
+            correctedContent,
+            forkedOwner,
+            forkedRepo,
+            true
+        )
+        await addFixedFile(`${forkedOwner}@${forkedRepo}@${filePath}`)
+        const prTitle = 'Fix grammatical errors in markdown files by Gitfix'
+        const prBody =
+            'This pull request fixes grammatical errors in the markdown files. ' +
+            'Changes are made by Gitfix, which is an AI-powered application, ' +
+            'aims to help developers in their daily tasks.'
+        await github.createPullRequest(prTitle, prBody, forkedOwner, forkedRepo)
+
+        if (isLastFile) {
+            const statusResponse = await fetch('/api/status', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    status: 'completed',
+                    logs: ['Pull request created successfully.']
+                }),
+            })
+            if (!statusResponse.ok) {
+                console.error('Failed to update status:', await statusResponse.text())
+            }
+        }
+        
+        return new Response('OK', { status: 200 })
     } catch (error) {
-        console.error('Error handling POST request:', error)
+        console.error('Error processing callback:', error)
         return new Response('Internal server error', { status: 500 })
     }
 }
@@ -201,7 +189,8 @@ async function publishIntoQStash(
     forkedRepo: string,
     owner: string,
     repo: string,
-    auth: string
+    auth: string,
+    isLastFile: boolean
 ) {
     const qstashToken: string = process.env.QSTASH_TOKEN as string
     const openaiToken: string = process.env.OPENAI_API_KEY as string
@@ -247,14 +236,14 @@ async function publishIntoQStash(
                     "owner": "${owner}",
                     "repo": "${repo}",
                     "auth": "${auth}"
+                    "isLastFile": "${isLastFile}"
                 }
                 {original_line, correction}, 
                 {original_line, correction}]\}
 
-                You should only correct what is given in the file, do not add any original text.
-                DO NOT perform any action if you detect code blocks, paths or links.
-                DO NOT alter any of the code blocks, codes, paths or links.
-                DO NOT change the indentation of the code blocks.
+                You should only correct what is given in the file, do not add anything to the original text.
+                Code blocks are untouchable ,DO NOT perform any action if you detect code blocks, paths or links.
+                DO NOT alter any part of the code blocks, codes, paths or links, do not change indentations.
                 In the front matter section, change only the title and summary if they are given in the original file.
                 DO NOT change any of the code blocks, including the strings and comments inside the code block.
                 Change the errors line by line and do not merge lines. Do not copy the content of one line to the other.
