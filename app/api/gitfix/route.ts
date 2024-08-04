@@ -161,18 +161,22 @@ export async function POST(request: Request) {
 
         if (isLastFile) {
             const statusResponse = await fetch('/api/status', {
-                method: 'POST',
+                method: 'POST', 
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    logs: ['Pull request created successfully.']
+                    logs: ['Pull request created successfully.'] 
                 }),
             })
-            if (!statusResponse.ok) {
+            if (statusResponse.ok) {
+                const data = await statusResponse.json()
+                console.log('Status updated:', data)
+            } else {
                 console.error('Failed to update status:', await statusResponse.text())
             }
         }
+
 
         return new Response('OK', { status: 200 })
     } catch (error) {

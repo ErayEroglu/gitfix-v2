@@ -24,20 +24,16 @@ const Search = () => {
         if (polling) {
             intervalId = setInterval(async () => {
                 try {
-                    const response = await fetch('/api/status',
-                        {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                        }
-                    )
+                    const response = await fetch('/api/status', {
+                        method: 'GET', 
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                    })
                     if (response.ok) {
                         const data = await response.json()
-                        if (data.logs) {
-                            setLogs((prevLogs) => [...prevLogs, ...data.logs])
-                        }
                         if (data.status === 'completed') {
+                            setLogs((prevLogs) => [...prevLogs, "Pull request created, you can check your repository."])
                             setPolling(false)
                             setColor('green')
                             setMessage('All files are processed. The pull request has been created.')
