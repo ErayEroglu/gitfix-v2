@@ -24,7 +24,14 @@ const Search = () => {
         if (polling) {
             intervalId = setInterval(async () => {
                 try {
-                    const response = await fetch('/api/status')
+                    const response = await fetch('/api/status',
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                        }
+                    )
                     if (response.ok) {
                         const data = await response.json()
                         if (data.logs) {

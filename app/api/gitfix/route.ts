@@ -166,7 +166,6 @@ export async function POST(request: Request) {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    status: 'completed',
                     logs: ['Pull request created successfully.']
                 }),
             })
@@ -174,7 +173,7 @@ export async function POST(request: Request) {
                 console.error('Failed to update status:', await statusResponse.text())
             }
         }
-        
+
         return new Response('OK', { status: 200 })
     } catch (error) {
         console.error('Error processing callback:', error)
