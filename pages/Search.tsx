@@ -12,6 +12,7 @@ const Search = () => {
     const [logs, setLogs] = useState<string[]>([]) 
     const [polling, setPolling] = useState(false) 
     const { data: session } = useSession()
+    const [requestId, setRequestId] = useState<string | null>(null)
 
     useEffect(() => {
         if (session) {
@@ -21,11 +22,11 @@ const Search = () => {
 
     useEffect(() => {
         let intervalId: NodeJS.Timeout | null = null
-        if (polling) {
+        if (polling && requestId) {
             intervalId = setInterval(async () => {
                 try {
-                    const response = await fetch('/api/status', {
-                        method: 'GET', 
+                    const response = await fetch(`/api/status?id=${requestId}`, {
+                        method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
                         },
@@ -33,26 +34,30 @@ const Search = () => {
                     if (response.ok) {
                         const data = await response.json()
                         if (data.status === 'completed') {
-                            setLogs((prevLogs) => [...prevLogs, "Pull request created, you can check your repository."])
+                            setLogs((prevLogs) => [
+                                ...prevLogs,
+                                'Pull request created, you can check your repository.',
+                            ])
                             setPolling(false)
                             setColor('green')
                             setMessage('All files are processed. The pull request has been created.')
-                        }
+                        } 
                     } else {
                         console.error('Failed to fetch status:', await response.text())
                     }
                 } catch (error) {
                     console.error('Polling error:', error)
                 }
-            }, 15000) 
+            }, 15000) // Adjust the polling interval as needed
         }
-
+    
         return () => {
             if (intervalId) {
                 clearInterval(intervalId)
             }
         }
-    }, [polling])
+    }, [polling, requestId])
+    
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -72,6 +77,8 @@ const Search = () => {
                 )
 
                 if (response.ok) {
+                    const responseData = await response.json()
+                    setRequestId(responseData.requestId)
                     setPolling(true)
                     const reader = response.body?.getReader()
                     const decoder = new TextDecoder()
@@ -86,7 +93,6 @@ const Search = () => {
                                 stream: true,
                             })
 
-                            // Split the accumulated data into valid JSON strings
                             let lastIndex = 0
                             let index = accumulatedData.indexOf('}{', lastIndex)
 
@@ -108,7 +114,6 @@ const Search = () => {
                                 index = accumulatedData.indexOf('}{', lastIndex)
                             }
 
-                            // Handle the remaining part of accumulatedData
                             try {
                                 const remainingData =
                                     accumulatedData.substring(lastIndex)
