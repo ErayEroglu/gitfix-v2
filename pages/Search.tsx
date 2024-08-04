@@ -25,7 +25,7 @@ const Search = () => {
         if (polling && requestId) {
             intervalId = setInterval(async () => {
                 try {
-                    const response = await fetch(`/api/status?id=${owner}@${repo}`, {
+                    const response = await fetch( process.env.NEXTAUTH_URL + `/api/status?id=${owner}@${repo}`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',

@@ -4,8 +4,8 @@ const statusMap: Record<string, "in-progress" | "completed"> = {}
 
 export async function GET(request: Request) {
     try {
-        const url = new URL(request.url)
-        const id = url.searchParams.get('id')
+        const { searchParams } = new URL(request.url)
+        const id = searchParams.get('id')
 
         if (!id || !statusMap[id]) {
             return NextResponse.json("in-progress")
