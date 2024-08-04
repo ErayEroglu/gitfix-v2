@@ -7,7 +7,6 @@ import OpenAI from 'openai'
 
 export async function GET(request: Request) {
     try {
-        console.log('Received request to fix markdown files')
         await clearDatabase()
         const { searchParams } = new URL(request.url)
         const owner = searchParams.get('owner')
@@ -35,7 +34,6 @@ export async function GET(request: Request) {
             async start(controller) {
                 let counter = 0
                 for (const filePath of Object.keys(github.md_files_content)) {
-                    console.log(`Fixing file: ${filePath}`)
                     const originalContent = github.md_files_content[filePath]
                     await publishIntoQStash(
                         originalContent,
@@ -68,7 +66,7 @@ export async function GET(request: Request) {
                     controller.enqueue(
                         encoder.encode(
                             JSON.stringify({
-                                message: 'Job is submitted to the AI model, please wait for response. We will let you know when the job is completed.',
+                                message: 'Job is submitted to the AI model, please wait for the response. We will let you know when the job is completed.',
                             })
                         )
                     )

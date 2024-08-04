@@ -41,18 +41,14 @@ const Search = () => {
                     const decoder = new TextDecoder()
                     let accumulatedData = ''
 
-                    console.log('Reader:', reader) // Debugging log
-
                     if (reader) {
                         while (true) {
                             const { done, value } = await reader.read()
-                            console.log('Read result:', { done, value }) // Debugging log
                             if (done) break
 
                             accumulatedData += decoder.decode(value, {
                                 stream: true,
                             })
-                            console.log('Accumulated data:', accumulatedData)
 
                             // Split the accumulated data into valid JSON strings
                             let lastIndex = 0
@@ -70,11 +66,6 @@ const Search = () => {
                                         ...prevLogs,
                                         parsedData.message,
                                     ]) // Update logs state
-                                    console.log('Parsed JSON string:', jsonStr) // Debugging log
-                                    console.log(
-                                        'Updated logs:',
-                                        parsedData.message
-                                    ) // Debugging log
                                 } catch (parseError) {
                                     console.warn('Parsing error:', parseError)
                                 }
