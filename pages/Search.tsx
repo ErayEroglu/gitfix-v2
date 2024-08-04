@@ -99,7 +99,7 @@ const Search = () => {
                     }
 
                     setColor('green')
-                    setMessage('Processing complete.')
+                    setMessage('Repository analysis completed, we are starting to process markdown files.')
                 } else {
                     const errorData = await response.json()
                     console.error('Error:', errorData)

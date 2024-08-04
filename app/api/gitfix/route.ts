@@ -8,9 +8,7 @@ import OpenAI from 'openai'
 export async function GET(request: Request) {
     try {
         console.log('Received request to fix markdown files')
-        //TODO: Remove this
         await clearDatabase()
-        // Parse the JSON request body
         const { searchParams } = new URL(request.url)
         const owner = searchParams.get('owner')
         const repo = searchParams.get('repo')
@@ -33,7 +31,6 @@ export async function GET(request: Request) {
 
         const encoder = new TextEncoder()
 
-        // Create a ReadableStream to stream data
         const customReadable = new ReadableStream({
             async start(controller) {
                 let counter = 0
@@ -58,11 +55,12 @@ export async function GET(request: Request) {
                         )
                     )
                 }
+
                 if (counter === 0) {
                     controller.enqueue(
                         encoder.encode(
                             JSON.stringify({
-                                message: 'No files to fix',
+                                message: 'No files to fix, either all files are already fixed or there is not any markdown file. Please try again with a different repository.',
                             })
                         )
                     )
@@ -70,7 +68,7 @@ export async function GET(request: Request) {
                     controller.enqueue(
                         encoder.encode(
                             JSON.stringify({
-                                message: 'Pull request created successfully',
+                                message: 'Job is submitted to the AI model, please wait for response. We will let you know when the job is completed.',
                             })
                         )
                     )
@@ -79,7 +77,6 @@ export async function GET(request: Request) {
             },
         })
 
-        // Custom headers
         const headers = {
             'Content-Type': 'application/json',
             'Cache-Control': 'no-cache',
@@ -102,65 +99,99 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
     try {
-        const body = await request.json()
-        const decodedBody = JSON.parse(
-            atob(body.body)
-        ) as OpenAI.Chat.Completions.ChatCompletion
+        const encoder = new TextEncoder()
+        const customReadable = new ReadableStream({
+            async start(controller) {
+                try {
+                    const body = await request.json()
+                    const decodedBody = JSON.parse(
+                        atob(body.body)
+                    ) as OpenAI.Chat.Completions.ChatCompletion
 
-        const corrections = JSON.parse(
-            decodedBody.choices[0].message.content as string
-        ).corrections
+                    const corrections = JSON.parse(
+                        decodedBody.choices[0].message.content as string
+                    ).corrections
 
-        const filePath = corrections[0].filepath
-        const originalContent = corrections[0].originalContent
-        const forkedOwner = corrections[0].forkedOwner
-        const forkedRepo = corrections[0].forkedRepo
-        const owner = corrections[0].owner
-        const repo = corrections[0].repo
-        const auth = corrections[0].auth
+                    const filePath = corrections[0].filepath
+                    const originalContent = corrections[0].originalContent
+                    const forkedOwner = corrections[0].forkedOwner
+                    const forkedRepo = corrections[0].forkedRepo
+                    const owner = corrections[0].owner
+                    const repo = corrections[0].repo
+                    const auth = corrections[0].auth
 
-        if (
-            !filePath ||
-            !originalContent ||
-            !forkedOwner ||
-            !forkedRepo ||
-            !owner ||
-            !repo ||
-            !auth
-        ) {
-            throw new Error('Missing metadata fields')
+                    if (
+                        !filePath ||
+                        !originalContent ||
+                        !forkedOwner ||
+                        !forkedRepo ||
+                        !owner ||
+                        !repo ||
+                        !auth
+                    ) {
+                        throw new Error('Missing metadata fields')
+                    }
+                    controller.enqueue(
+                        encoder.encode(
+                            JSON.stringify({
+                                message: `Corrected content for ${filePath} is being processed, uploading to the repository.`,
+                            })
+                        )
+                    )
+                    const correctedContent = await parser(decodedBody, originalContent)
+
+                    const github = new Github_API(owner, repo, auth)
+                    await github.initializeRepoDetails()
+
+                    await github.updateFileContent(
+                        filePath,
+                        correctedContent,
+                        forkedOwner,
+                        forkedRepo,
+                        true
+                    )
+                    await addFixedFile(`${forkedOwner}@${forkedRepo}@${filePath}`)
+                    const prTitle = 'Fix grammatical errors in markdown files by Gitfix'
+                    const prBody =
+                        'This pull request fixes grammatical errors in the markdown files. ' +
+                        'Changes are made by Gitfix, which is an AI-powered application, ' +
+                        'aims to help developers in their daily tasks.'
+                    await github.createPullRequest(prTitle, prBody, forkedOwner, forkedRepo)
+                    controller.enqueue(
+                        encoder.encode(
+                            JSON.stringify({
+                                message: 'Pull request created successfully',
+                            })
+                        )
+                    )
+                    controller.close()
+                } catch (error) {
+                    controller.enqueue(
+                        encoder.encode(
+                            JSON.stringify({
+                                message: 'Error occurred during the generation of pull request. OpeanAI model might have failed to generate the response, please try again.',
+                                error: error,
+                            })
+                        )
+                    )
+                    controller.close()
+                }
+            }
+        })
+
+        const headers = {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+            'Access-Control-Allow-Credentials': 'true',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET,OPTIONS,PATCH,DELETE,POST,PUT',
+            'Access-Control-Allow-Headers':
+                'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version',
         }
-        console.log(
-            'Received metadata:',
-            filePath,
-            forkedOwner,
-            forkedRepo,
-            owner,
-            repo,
-            auth
-        )
-        const correctedContent = await parser(decodedBody, originalContent)
 
-        const github = new Github_API(owner, repo, auth)
-        await github.initializeRepoDetails()
-
-        await github.updateFileContent(
-            filePath,
-            correctedContent,
-            forkedOwner,
-            forkedRepo,
-            true
-        )
-        await addFixedFile(`${forkedOwner}@${forkedRepo}@${filePath}`)
-        const prTitle = 'Fix grammatical errors in markdown files by Gitfix'
-        const prBody =
-            'This pull request fixes grammatical errors in the markdown files. ' +
-            'Changes are made by Gitfix, which is an AI-powered application, ' +
-            'aims to help developers in their daily tasks.'
-        await github.createPullRequest(prTitle, prBody, forkedOwner, forkedRepo)
-        return new Response('OK', { status: 200 })
+        return new Response(customReadable, { headers })
     } catch (error) {
-        console.error('Error processing callback:', error)
+        console.error('Error handling POST request:', error)
         return new Response('Internal server error', { status: 500 })
     }
 }
