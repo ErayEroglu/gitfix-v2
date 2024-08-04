@@ -33,6 +33,7 @@ const Search = () => {
                     })
                     if (response.ok) {
                         const data = await response.json()
+                        console.log('Status:', data)
                         if (data.status === 'completed') {
                             setLogs((prevLogs) => [
                                 ...prevLogs,
