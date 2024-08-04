@@ -42,9 +42,12 @@ const Search = () => {
                     let accumulatedData = ''
                     let logMessages: string[] = []
 
+                    console.log('Reader:', reader) // Debugging log
+
                     if (reader) {
                         while (true) {
                             const { done, value } = await reader.read()
+                            console.log('Read result:', { done, value }) // Debugging log
                             if (done) break
                             accumulatedData += decoder.decode(value, {
                                 stream: true,
@@ -64,10 +67,15 @@ const Search = () => {
                                             0,
                                             endIndex
                                         )
-                                        const parsedData = JSON.parse(jsonStr)
+                                        console.log(
+                                            'Parsed JSON string:',
+                                            jsonStr
+                                        ) // Debugging log
 
+                                        const parsedData = JSON.parse(jsonStr)
                                         logMessages.push(parsedData.message)
                                         setLogs([...logMessages]) // Update logs state
+
                                         console.log(
                                             'Updated logs:',
                                             logMessages
@@ -75,6 +83,10 @@ const Search = () => {
 
                                         data = data.substring(endIndex).trim()
                                     } catch (parseError) {
+                                        console.warn(
+                                            'Parsing error:',
+                                            parseError
+                                        )
                                         break
                                     }
                                 }
