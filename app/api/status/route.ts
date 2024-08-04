@@ -7,11 +7,12 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url)
         const id = searchParams.get('id')
 
-        if (!id || !statusMap[id]) {
+        if (!id) {
             return NextResponse.json("in-progress")
         }
 
-        return NextResponse.json(statusMap[id])
+        const status = statusMap[id] || "in-progress"
+        return NextResponse.json(status)
     } catch (error) {
         console.error('Error fetching status:', error)
         return new Response('Internal server error', { status: 500 })

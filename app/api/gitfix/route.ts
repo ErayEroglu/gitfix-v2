@@ -170,15 +170,10 @@ export async function POST(request: Request) {
                     logs: ['Pull request created successfully.'] 
                 }),
             })
-            if (statusResponse.ok) {
-                const data = await statusResponse.json()
-                console.log('Status updated:', data)
-            } else {
-                console.error('Failed to update status:', await statusResponse.text())
+            if (!statusResponse.ok) {
+                console.error('Failed to update status:', await statusResponse.text());
             }
         }
-
-
         return new Response('OK', { status: 200 })
     } catch (error) {
         console.error('Error processing callback:', error)
