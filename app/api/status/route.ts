@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-let statusData : string
+let statusData: 'completed' | 'in-progress' = 'in-progress'
 
 export async function GET(request: Request) {
     try {
