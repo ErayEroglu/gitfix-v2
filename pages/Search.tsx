@@ -40,7 +40,6 @@ const Search = () => {
                     const reader = response.body?.getReader()
                     const decoder = new TextDecoder()
                     let accumulatedData = ''
-                    let logMessages: string[] = []
 
                     console.log('Reader:', reader) // Debugging log
 
@@ -49,54 +48,52 @@ const Search = () => {
                             const { done, value } = await reader.read()
                             console.log('Read result:', { done, value }) // Debugging log
                             if (done) break
+
                             accumulatedData += decoder.decode(value, {
                                 stream: true,
                             })
                             console.log('Accumulated data:', accumulatedData)
 
-                            try {
-                                let data = accumulatedData
-                                let endIndex: number
+                            // Split the accumulated data into valid JSON strings
+                            let lastIndex = 0
+                            let index = accumulatedData.indexOf('}{', lastIndex)
 
-                                while (true) {
-                                    try {
-                                        endIndex = data.indexOf('}\n') + 1
-                                        if (endIndex === 0) break
-
-                                        const jsonStr = data.substring(
-                                            0,
-                                            endIndex
-                                        )
-                                        console.log(
-                                            'Parsed JSON string:',
-                                            jsonStr
-                                        ) // Debugging log
-
-                                        const parsedData = JSON.parse(jsonStr)
-                                        logMessages.push(parsedData.message)
-                                        setLogs([...logMessages]) // Update logs state
-
-                                        console.log(
-                                            'Updated logs:',
-                                            logMessages
-                                        ) // Debugging log
-
-                                        data = data.substring(endIndex).trim()
-                                    } catch (parseError) {
-                                        console.warn(
-                                            'Parsing error:',
-                                            parseError
-                                        )
-                                        break
-                                    }
-                                }
-
-                                accumulatedData = data
-                            } catch (parseError) {
-                                console.warn(
-                                    'Accumulated data not yet complete or valid JSON:',
-                                    parseError
+                            while (index !== -1) {
+                                const jsonStr = accumulatedData.substring(
+                                    lastIndex,
+                                    index + 1
                                 )
+                                lastIndex = index + 1
+                                try {
+                                    const parsedData = JSON.parse(jsonStr)
+                                    setLogs((prevLogs) => [
+                                        ...prevLogs,
+                                        parsedData.message,
+                                    ]) // Update logs state
+                                    console.log('Parsed JSON string:', jsonStr) // Debugging log
+                                    console.log(
+                                        'Updated logs:',
+                                        parsedData.message
+                                    ) // Debugging log
+                                } catch (parseError) {
+                                    console.warn('Parsing error:', parseError)
+                                }
+                                index = accumulatedData.indexOf('}{', lastIndex)
+                            }
+
+                            // Handle the remaining part of accumulatedData
+                            try {
+                                const remainingData =
+                                    accumulatedData.substring(lastIndex)
+                                if (remainingData) {
+                                    const parsedData = JSON.parse(remainingData)
+                                    setLogs((prevLogs) => [
+                                        ...prevLogs,
+                                        parsedData.message,
+                                    ])
+                                }
+                            } catch (parseError) {
+                                console.warn('Parsing error:', parseError)
                             }
                         }
                     }
