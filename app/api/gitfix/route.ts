@@ -160,7 +160,7 @@ export async function POST(request: Request) {
         await github.createPullRequest(prTitle, prBody, forkedOwner, forkedRepo)
 
         if (isLastFile) {
-            const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+            const baseUrl = process.env.NEXTAUTH_URL;
             const statusUrl = `${baseUrl}/api/status`;
             const statusResponse = await fetch(statusUrl, {
                 method: 'POST',
