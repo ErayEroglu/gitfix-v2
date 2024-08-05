@@ -160,16 +160,17 @@ export async function POST(request: Request) {
         await github.createPullRequest(prTitle, prBody, forkedOwner, forkedRepo)
 
         if (isLastFile) {
-            const statusResponse = await fetch( process.env.NEXTAUTH_URL + '/api/status', {
-                method: 'POST', 
+            const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+            const statusUrl = `${baseUrl}/api/status`;
+            const statusResponse = await fetch(statusUrl, {
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    id: `${owner}@${repo}`,
-                    logs: ['Pull request created successfully.'] 
+                    logs: ['Pull request created successfully.']
                 }),
-            })
+            });
             if (!statusResponse.ok) {
                 console.error('Failed to update status:', await statusResponse.text());
             }
