@@ -22,7 +22,7 @@ const Search = () => {
 
     useEffect(() => {
         let intervalId: NodeJS.Timeout | null = null
-        if (polling && requestId) {
+        if (polling) {
             intervalId = setInterval(async () => {
                 try {
                     const response = await fetch(`/api/status?id=${owner}@${repo}`, {
