@@ -79,8 +79,6 @@ const Search = () => {
                 )
 
                 if (response.ok) {
-                    const responseData = await response.json()
-                    setRequestId(responseData.requestId)
                     setPolling(true)
                     const reader = response.body?.getReader()
                     const decoder = new TextDecoder()
