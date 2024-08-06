@@ -12,8 +12,8 @@ export async function GET(request: Request) {
         }
 
         const status = statusMap[id] || "in-progress"
-        return NextResponse.json(status)
-    } catch (error) {
+        return NextResponse.json({ status: `${status}`})
+        } catch (error) {
         console.error('Error fetching status:', error)
         return new Response('Internal server error', { status: 500 })
     }
