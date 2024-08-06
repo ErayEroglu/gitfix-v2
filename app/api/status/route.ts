@@ -6,7 +6,7 @@ export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url)
         const id = searchParams.get('id')
-
+        console.log('id:', id)
         if (!id) {
             return NextResponse.json("in-progress")
         }
@@ -23,6 +23,7 @@ export async function POST(request: Request) {
     try {
         const body = await request.json()
         const id = body.id
+        console.log('id in the post request:', id)
         const logs = body.logs || []
 
         if (!id) {
