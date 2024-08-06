@@ -117,6 +117,17 @@ export async function POST(request: Request) {
         const auth = corrections[0].auth
         const isLastFile = corrections[0].isLastFile
 
+        console.log(
+            'Received metadata:',
+            filePath,
+            forkedOwner,
+            forkedRepo,
+            owner,
+            repo,
+            auth,
+            isLastFile
+        )
+        
         if (
             !filePath ||
             !originalContent ||
@@ -129,16 +140,6 @@ export async function POST(request: Request) {
         ) {
             throw new Error('Missing metadata fields')
         }
-        console.log(
-            'Received metadata:',
-            filePath,
-            forkedOwner,
-            forkedRepo,
-            owner,
-            repo,
-            auth,
-            isLastFile
-        )
         const correctedContent = await parser(decodedBody, originalContent)
 
         const github = new Github_API(owner, repo, auth)
