@@ -34,6 +34,7 @@ const Search = () => {
                     if (response.ok) {
                         const data = await response.json()
                         console.log('Status:', data)
+    
                         if (data.status === 'completed') {
                             setLogs((prevLogs) => [
                                 ...prevLogs,
@@ -42,7 +43,7 @@ const Search = () => {
                             setPolling(false)
                             setColor('green')
                             setMessage('All files are processed. The pull request has been created.')
-                        } 
+                        }
                     } else {
                         console.error('Failed to fetch status:', await response.text())
                     }

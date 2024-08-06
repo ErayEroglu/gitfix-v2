@@ -35,7 +35,7 @@ export async function POST(request: Request) {
         }
 
         statusMap[id] = logs.length > 0 ? 'in-progress' : 'completed'
-        return new Response('OK', { status: 200 })
+        return new Response(JSON.stringify({ message: 'OK' }), { status: 200 })
     } catch (error) {
         console.error('Error updating status:', error)
         return new Response('Internal server error', { status: 500 })
