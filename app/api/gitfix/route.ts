@@ -168,7 +168,8 @@ export async function POST(request: Request) {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    logs: ['Pull request created successfully.']
+                    logs: ['Pull request created successfully.'],
+                    id: `${owner}@${repo}`,
                 }),
             });
             if (!statusResponse.ok) {
