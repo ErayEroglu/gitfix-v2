@@ -10,7 +10,7 @@ export async function GET(request: Request) {
         if (!id) {
             return NextResponse.json("in-progress")
         }
-
+        
         const status = statusMap[id] || "in-progress"
         return NextResponse.json({ status: `${status}`})
         } catch (error) {
@@ -25,13 +25,9 @@ export async function POST(request: Request) {
         const id = body.id
         console.log('id in the post request:', id)
         const logs = body.logs || []
-
+        console.log('logs:', logs)
         if (!id) {
             return new Response('Missing request ID', { status: 400 })
-        }
-
-        if (!statusMap[id]) {
-            statusMap[id] = "in-progress"
         }
 
         statusMap[id] = logs.length > 0 ? 'completed' : 'in-progress'
