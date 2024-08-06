@@ -34,7 +34,7 @@ export async function POST(request: Request) {
             statusMap[id] = "in-progress"
         }
 
-        statusMap[id] = logs.length > 0 ? 'in-progress' : 'completed'
+        statusMap[id] = logs.length > 0 ? 'completed' : 'in-progress'
         return new Response(JSON.stringify({ message: 'OK' }), { status: 200 })
     } catch (error) {
         console.error('Error updating status:', error)
