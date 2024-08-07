@@ -86,7 +86,7 @@ Key Functions:
 - File Fetching and Processing : Retrieves markdown files from the repository, extracts the text content and submits files to the AI model by using Upstash QStash.
 - Progress Streaming: Streams progress updates to the frontend.
   
-### status
+#### status
 
 Handles the updating and streaming of the current status of operations. It is responsible for receiving logs from the backend and sending them to frontend.
 
