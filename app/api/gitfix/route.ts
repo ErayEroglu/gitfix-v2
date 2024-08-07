@@ -2,11 +2,13 @@ import { NextResponse } from 'next/server'
 import { Github_API } from '@/lib/github-api'
 import { addFixedFile, isFileFixed, clearDatabase } from '@/lib/redis-utils'
 import { Client, openai, upstash } from '@upstash/qstash'
-
 import OpenAI from 'openai'
 
+// handles the GET request from the client, the  search page
+// it will fork the repository and get the file content, then publish the task to QStash
 export async function GET(request: Request) {
     try {
+        //TODO: this part will be deleted
         await clearDatabase()
         const { searchParams } = new URL(request.url)
         const owner = searchParams.get('owner')
@@ -29,7 +31,6 @@ export async function GET(request: Request) {
         await github.getFileContent()
 
         const encoder = new TextEncoder()
-
         const customReadable = new ReadableStream({
             async start(controller) {
                 let counter = 0
@@ -47,6 +48,7 @@ export async function GET(request: Request) {
                         auth,
                         counter === numberOfFiles
                     )
+                    // logs the selected file
                     controller.enqueue(
                         encoder.encode(
                             JSON.stringify({
@@ -91,12 +93,15 @@ export async function GET(request: Request) {
     } catch (error) {
         console.error('Error handling GET request:', error)
         return NextResponse.json(
-            { message: 'Internal server error', error: (error as any).message },
+            { message: 'The repository details could not be fetched, please check the entered information.', error: (error as any).message },
             { status: 500 }
         )
     }
 }
 
+// handles the POST request from the QStash, the callback
+// it will get the corrections from the AI model and update the file in the forked repository
+// then it will create a pull request to the original repository
 export async function POST(request: Request) {
     try {
         const body = await request.json()
@@ -184,6 +189,7 @@ export async function POST(request: Request) {
     }
 }
 
+// publishes the task to QStash, used in the GET request handler
 async function publishIntoQStash(
     file_content: string,
     filePath: string,
@@ -219,16 +225,15 @@ async function publishIntoQStash(
                 {
                     role: 'system',
                     content: `
-                I want you to fix grammatical errors in an mdx file.
-                I will give you the file and you will correct grammatical errors in the text(paragraphs and headers).
+                I want you to fix grammatical errors in a markdown file.
+                I will give you the file and you will correct grammatical errors in the text (paragraphs and headers).
                 Your response should be an array of json objects.
                 Each one of those objects should contain the original line and corrections. 
-                Send me all the suggestions in a single answer in the following format:
 
                 Before you start generating corrections, do the following:
                 I will give you the required information for the first element, do not change it and directly use it.
                 After that, you can start generating corrections.
-
+                
                 Explicity, the form of array will be this: 
                 \{corrections : [{
                     "filepath": "${filePath}",
@@ -245,12 +250,14 @@ async function publishIntoQStash(
 
                 You should only correct what is given in the file, do not add anything to the original text.
                 Code blocks are untouchable ,DO NOT perform any action if you detect code blocks, paths or links.
-                DO NOT alter any part of the code blocks, codes, paths or links, do not change indentations.
-                In the front matter section, change only the title and summary if they are given in the original file.
                 DO NOT change any of the code blocks, including the strings and comments inside the code block.
+                DO NOT alter any part of the code blocks, codes, paths or links.
+                Do NOT modfiy the indentations of a code block, indentations may be crucial for the code and modifying them may lead undesired outcomes.
+                In the front matter section, change only the title and summary if they are given in the original file.
                 Change the errors line by line and do not merge lines. Do not copy the content of one line to the other.
                 DO NOT merge lines.
                 DO NOT change the words with their synonyms.
+                DO NOT change or try to modify emojis.
                 DO NOT erase the front matter section. 
                 `,
                 },
@@ -268,6 +275,7 @@ async function publishIntoQStash(
     })
 }
 
+// helper function which parses the response from the AI model, used in the POST request handler
 async function parser(
     completion: OpenAI.Chat.Completions.ChatCompletion,
     file_content: string

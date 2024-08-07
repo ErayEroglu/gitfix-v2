@@ -20,6 +20,8 @@ const Search = () => {
         }
     }, [session])
 
+    // Polling to check the status of the request
+    // This is used to update the logs on the client side
     useEffect(() => {
         let intervalId: NodeJS.Timeout | null = null
         if (polling) {
@@ -61,6 +63,7 @@ const Search = () => {
     }, [polling, requestId])
     
 
+    // takes the owner, repo, and authToken as input and sends a GET request to the /api/gitfix route
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (owner && repo && authToken) {
@@ -92,7 +95,8 @@ const Search = () => {
                             accumulatedData += decoder.decode(value, {
                                 stream: true,
                             })
-
+                            
+                            console.log('accumulatedData:', accumulatedData)
                             let lastIndex = 0
                             let index = accumulatedData.indexOf('}{', lastIndex)
 
@@ -107,7 +111,7 @@ const Search = () => {
                                     setLogs((prevLogs) => [
                                         ...prevLogs,
                                         parsedData.message,
-                                    ]) // Update logs state
+                                    ])
                                 } catch (parseError) {
                                     console.warn('Parsing error:', parseError)
                                 }
@@ -129,7 +133,6 @@ const Search = () => {
                             }
                         }
                     }
-
                     setColor('green')
                     setMessage('Repository analysis completed, we are starting to process markdown files.')
                 } else {
