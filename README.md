@@ -66,7 +66,7 @@ npm run dev
 
 Open your browser and navigate to <http://localhost:5000>.
 
-**Important note:** In this project, hosting your application on a public server is strongly recommended. QStash requires a publicly accessible server, also handling GitHub OAuth applications on a public server is a better exercise than handling them on the localhost. You can use [Vercel Hobby Plan](https://vercel.com/docs/accounts/plans/hobby), it is perfectly fine with our purposes and doesn't require payment or entering billing information. You can modify the project according to your needs, however, we suggest you host them on a website.
+**Important note:** In this project, hosting your application on a public server is strongly recommended. QStash requires a publicly accessible server, so using localhost directly won't work. You can use [Vercel Hobby Plan](https://vercel.com/docs/accounts/plans/hobby), it is perfectly fine with our purposes and doesn't require payment or entering billing information. You can modify the project according to your needs, however, we suggest you host them on a website.
 
 ## Backend Architecture
 
