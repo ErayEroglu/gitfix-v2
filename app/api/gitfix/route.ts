@@ -53,17 +53,17 @@ export async function GET(request: Request) {
                         encoder.encode(
                             JSON.stringify({
                                 message: `Selected file : ${filePath}`,
-                            }) 
+                            }) + '#' // Adding a delimiter for better handling in frontend
                         )
                     )
                 }
-
+        
                 if (counter === 0) {
                     controller.enqueue(
                         encoder.encode(
                             JSON.stringify({
                                 message: 'No files to fix, either all files are already fixed or there is not any markdown file. Please try again with a different repository.',
-                            })
+                            }) + '#'
                         )
                     )
                 } else {
@@ -71,7 +71,7 @@ export async function GET(request: Request) {
                         encoder.encode(
                             JSON.stringify({
                                 message: 'Job is submitted to the AI model, please wait for the response. We will let you know when the job is completed.',
-                            })
+                            }) + '#'
                         )
                     )
                 }

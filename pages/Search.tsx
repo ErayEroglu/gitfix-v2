@@ -80,34 +80,28 @@ const Search = () => {
                         },
                     }
                 )
-
+    
                 if (response.ok) {
                     setPolling(true)
                     const reader = response.body?.getReader()
                     const decoder = new TextDecoder()
                     let accumulatedData = ''
-
+    
                     if (reader) {
                         while (true) {
                             const { done, value } = await reader.read()
                             if (done) break
-
+    
                             accumulatedData += decoder.decode(value, {
                                 stream: true,
                             })
-                            
-                            console.log('accumulatedData:', accumulatedData)
-                            let lastIndex = 0
-                            let index = accumulatedData.indexOf('}{', lastIndex)
-
-                            while (index !== -1) {
-                                const jsonStr = accumulatedData.substring(
-                                    lastIndex,
-                                    index + 1
-                                )
-                                lastIndex = index + 1
+    
+                            // Splitting the accumulated data into complete JSON objects
+                            const messages = accumulatedData.split('#').filter(Boolean)
+    
+                            messages.forEach((message) => {
                                 try {
-                                    const parsedData = JSON.parse(jsonStr)
+                                    const parsedData = JSON.parse(message)
                                     setLogs((prevLogs) => [
                                         ...prevLogs,
                                         parsedData.message,
@@ -115,22 +109,10 @@ const Search = () => {
                                 } catch (parseError) {
                                     console.warn('Parsing error:', parseError)
                                 }
-                                index = accumulatedData.indexOf('}{', lastIndex)
-                            }
-
-                            try {
-                                const remainingData =
-                                    accumulatedData.substring(lastIndex)
-                                if (remainingData) {
-                                    const parsedData = JSON.parse(remainingData)
-                                    setLogs((prevLogs) => [
-                                        ...prevLogs,
-                                        parsedData.message,
-                                    ])
-                                }
-                            } catch (parseError) {
-                                console.warn('Parsing error:', parseError)
-                            }
+                            })
+    
+                            // Clear accumulated data after processing
+                            accumulatedData = ''
                         }
                     }
                     setColor('green')
