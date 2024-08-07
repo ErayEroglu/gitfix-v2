@@ -119,8 +119,8 @@ export async function POST(request: Request) {
         const forkedRepo = corrections[0].forkedRepo
         const owner = corrections[0].owner
         const repo = corrections[0].repo
-        const auth = corrections[0].auth
-        const isLastFile = corrections[0].isLastFile
+        const auth = corrections[0].auth 
+        const isLastFile = corrections[0].isLastFile === 'true'
 
         console.log(
             'Received metadata:',
@@ -140,8 +140,7 @@ export async function POST(request: Request) {
             !forkedRepo ||
             !owner ||
             !repo ||
-            !auth ||
-            !isLastFile
+            !auth
         ) {
             throw new Error('Missing metadata fields')
         }
@@ -250,9 +249,8 @@ async function publishIntoQStash(
 
                 You should only correct what is given in the file, do not add anything to the original text.
                 Code blocks are untouchable ,DO NOT perform any action if you detect code blocks, paths or links.
-                DO NOT change any of the code blocks, including the strings and comments inside the code block.
+                DO NOT change any of the code blocks, including the strings, comments and indentations inside the code block.
                 DO NOT alter any part of the code blocks, codes, paths or links.
-                Do NOT modfiy the indentations of a code block, indentations may be crucial for the code and modifying them may lead undesired outcomes.
                 In the front matter section, change only the title and summary if they are given in the original file.
                 Change the errors line by line and do not merge lines. Do not copy the content of one line to the other.
                 DO NOT merge lines.
