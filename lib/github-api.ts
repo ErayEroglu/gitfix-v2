@@ -28,21 +28,17 @@ export class Github_API {
         this.headers = this.getHeaders()
     }
 
-    async initializeRepoDetails(): Promise<void> {
+    async initializeRepoDetails(filePath?: string | null): Promise<void> {
+        if (!this.inputType) {
+            this.filePath = filePath as string
+        }
         this.repo_details = await this.getRepoDetails()
     }
 
     // find the md files and extract the text
     async getFileContent(): Promise<void> {
-        console.log('the input type is : ' + this.inputType)
-        if (this.inputType) {
         await this.getMdFiles()
         await this.getMdFileDetails()
-        } else {
-            const url = this.url + `/contents/${this.filePath}`
-            const sha = await this.getFileSHA(url, this.headers, 'master')
-            this.items.push({ path: this.filePath, sha: sha })
-        }
     }
 
     // fork the target repo
@@ -191,6 +187,24 @@ export class Github_API {
     }
 
     private async getMdFiles(): Promise<void> {
+        if (!this.inputType && this.filePath) {
+            const fileUrl = `${this.url}/contents/${this.filePath}`;
+            const headers = this.headers;
+            const response = await fetch(fileUrl, { headers });
+
+            if (!response.ok) {
+                throw new Error(
+                    `Github API is unable to retrieve file details: ${response.status}`
+                );
+            }
+
+            const data = await response.json();
+            const fileSha = data.sha;
+            this.items.push({ path: this.filePath, sha: fileSha });
+            console.log(`Added ${this.filePath} with SHA ${fileSha} to the items array.`);
+            return;
+        }
+
         const url =
             this.url +
             `/git/trees/${this.repo_details.default_branch}?recursive=0`

@@ -16,9 +16,7 @@ export async function GET(request: Request) {
         const typeParam = searchParams.get('type');
         const type = typeParam !== null ? Number(typeParam) : NaN;
         console.log('owner:', owner, 'repo:', repo, 'type:', type)
-        if(!type) {
-            const filePath = searchParams.get('filePath')
-        } 
+
         if (!owner || !repo ) {
             return NextResponse.json(
                 { message: 'The URL is invalid, please check it' },
@@ -26,7 +24,13 @@ export async function GET(request: Request) {
             )
         }
         const github = new Github_API(owner, repo,  type)
-        await github.initializeRepoDetails()
+
+        if(!type) {
+            const filePath = searchParams.get('filePath')
+            await github.initializeRepoDetails(filePath)
+        } else {
+            await github.initializeRepoDetails()
+        }
 
         console.log('trying to fork the repo')
         const forked_repo_info = await github.forkRepository()
