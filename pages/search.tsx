@@ -5,7 +5,6 @@ const Search = () => {
     const [owner, setOwner] = useState('')
     const [repo, setRepo] = useState('')
     const [filePath, setFilePath] = useState('')
-    // const [authToken, setAuthToken] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [message, setMessage] = useState('')
     const [color, setColor] = useState('')

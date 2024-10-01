@@ -190,7 +190,6 @@ export class Github_API {
         }
     }
 
-    // finds md files in the repo
     private async getMdFiles(): Promise<void> {
         const url =
             this.url +
@@ -207,30 +206,36 @@ export class Github_API {
         console.log(
             `Searching for markdown files in ${this.owner + '/' + this.repo}`
         )
-        // identify the md files in the repo
+        
+        let readmeFound = false;
+    
+        // Search for README.md specifically first
         for (const item of data.tree) {
-            if (item.type === 'blob') {
-                let type = item.path.split('.').pop()
-                if (type == 'md' || type === 'mdx') {
-                    this.items.push({ path: item.path, sha: item.sha })
+            if (item.type === 'blob' && item.path.toLowerCase() === 'readme.md' && !(await isFileFixed(this.owner + '@' + this.repo + '@' + item.path))) {
+                this.items.push({ path: item.path, sha: item.sha })
+                readmeFound = true;
+                break; // prioritize the README file and stop searching
+            }
+        }
+        // If README.md is not found, search for other markdown files
+        if (!readmeFound) {
+            for (const item of data.tree ) {
+                if (item.type === 'blob' && !(await isFileFixed(this.owner + '@' + this.repo + '@' + item.path))) {
+                    let type = item.path.split('.').pop()
+                    if (type == 'md' || type === 'mdx') {
+                        this.items.push({ path: item.path, sha: item.sha })
+                    }
                 }
             }
         }
+    
         console.log(`Discovered ${this.items.length} items`)
     }
-
+    
     // get sthe content of each md file
     private async getMdFileDetails(): Promise<void> {
         let counter = 0
         for (const item of this.items) {
-            if (
-                await isFileFixed(
-                    this.owner + '@' + this.repo + '@' + item.path
-                )
-            ) {
-                console.log(`File ${item.path} is already fixed, skipping...`)
-                continue
-            }
             if (counter > this.fileLimit) {
                 console.log(
                     'Max file limit reached, if you want to process more files, please run the app again or run it on local environment.'
