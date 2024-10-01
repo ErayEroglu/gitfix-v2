@@ -13,23 +13,29 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url)
         const owner = searchParams.get('owner')
         const repo = searchParams.get('repo')
-        const auth = searchParams.get('auth')
-
-        if (!owner || !repo || !auth) {
+        const typeParam = searchParams.get('type');
+        const type = typeParam !== null ? Number(typeParam) : NaN;
+        console.log('owner:', owner, 'repo:', repo, 'type:', type)
+        if(!type) {
+            const filePath = searchParams.get('filePath')
+        } 
+        if (!owner || !repo ) {
             return NextResponse.json(
-                { message: 'Missing required fields' },
+                { message: 'The URL is invalid, please check it' },
                 { status: 400 }
             )
         }
-
-        const github = new Github_API(owner, repo, auth)
+        const github = new Github_API(owner, repo,  type)
         await github.initializeRepoDetails()
 
+        console.log('trying to fork the repo')
         const forked_repo_info = await github.forkRepository()
+        console.log('repo is forked')
         const forkedOwner = forked_repo_info[0]
         const forkedRepo = forked_repo_info[1]
         await github.getFileContent()
 
+        console.log('file content is extracted')
         const encoder = new TextEncoder()
         const customReadable = new ReadableStream({
             async start(controller) {
@@ -45,8 +51,8 @@ export async function GET(request: Request) {
                         forkedRepo,
                         owner,
                         repo,
-                        auth,
-                        counter === numberOfFiles
+                        counter === numberOfFiles,
+                        type
                     )
                     // logs the selected file
                     controller.enqueue(
@@ -119,8 +125,8 @@ export async function POST(request: Request) {
         const forkedRepo = corrections[0].forkedRepo
         const owner = corrections[0].owner
         const repo = corrections[0].repo
-        const auth = corrections[0].auth 
         const isLastFile = corrections[0].isLastFile === 'true'
+        const type = corrections[0].type
 
         console.log(
             'Received metadata:',
@@ -129,7 +135,6 @@ export async function POST(request: Request) {
             forkedRepo,
             owner,
             repo,
-            auth,
             isLastFile
         )
         
@@ -139,14 +144,13 @@ export async function POST(request: Request) {
             !forkedOwner ||
             !forkedRepo ||
             !owner ||
-            !repo ||
-            !auth
+            !repo
         ) {
             throw new Error('Missing metadata fields')
         }
         const correctedContent = await parser(decodedBody, originalContent)
 
-        const github = new Github_API(owner, repo, auth)
+        const github = new Github_API(owner, repo, type)
         await github.initializeRepoDetails()
 
         await github.updateFileContent(
@@ -196,8 +200,8 @@ async function publishIntoQStash(
     forkedRepo: string,
     owner: string,
     repo: string,
-    auth: string,
-    isLastFile: boolean
+    isLastFile: boolean,
+    type: number   
 ) {
     const qstashToken: string = process.env.QSTASH_TOKEN as string
     const openaiToken: string = process.env.OPENAI_API_KEY as string
@@ -241,8 +245,8 @@ async function publishIntoQStash(
                     "forkedRepo": "${forkedRepo}",
                     "owner": "${owner}",
                     "repo": "${repo}",
-                    "auth": "${auth}"
                     "isLastFile": "${isLastFile}"
+                    "type": "${type}"
                 }
                 {original_line, correction}, 
                 {original_line, correction}]\}

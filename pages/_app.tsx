@@ -1,12 +1,13 @@
-import { SessionProvider } from 'next-auth/react'
-import { ComponentType } from 'react'
+// pages/_app.tsx
+import { SessionProvider } from 'next-auth/react';
+import { ComponentType } from 'react';
 
 interface MyAppProps {
-    Component: ComponentType<any>
+    Component: ComponentType<any>;
     pageProps: {
-        session: any
-        [key: string]: any
-    }
+        session: any; // Specify a better type if possible
+        [key: string]: any;
+    };
 }
 
 function MyApp({ Component, pageProps }: MyAppProps) {
@@ -14,7 +15,7 @@ function MyApp({ Component, pageProps }: MyAppProps) {
         <SessionProvider session={pageProps.session}>
             <Component {...pageProps} />
         </SessionProvider>
-    )
+    );
 }
 
-export default MyApp
+export default MyApp;

@@ -6,19 +6,21 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 export class Github_API {
     owner: string
     repo: string
-    auth: string | undefined
     items: any[]
     url: string
     repo_details: any
     md_files_content: any
     updatedItems: string[]
     headers: any
-    fileLimit: number = 3
+    fileLimit: number = 1
+    filePath: string
+    inputType: number
 
-    constructor(owner: string, repo: string, auth: string | undefined) {
+    constructor(owner: string, repo: string, inputType : number, filePath?: string | null) {
         this.owner = owner
         this.repo = repo
-        this.auth = auth
+        this.inputType = inputType
+        this.filePath = filePath as string
         this.items = []
         this.updatedItems = []
         this.md_files_content = {}
@@ -32,12 +34,22 @@ export class Github_API {
 
     // find the md files and extract the text
     async getFileContent(): Promise<void> {
+        console.log('the input type is : ' + this.inputType)
+        if (this.inputType) {
         await this.getMdFiles()
         await this.getMdFileDetails()
+        } else {
+            const url = this.url + `/contents/${this.filePath}`
+            const sha = await this.getFileSHA(url, this.headers, 'master')
+            this.items.push({ path: this.filePath, sha: sha })
+        }
     }
 
     // fork the target repo
     async forkRepository(): Promise<any[]> {
+
+        console.log(`Forking repository ${this.owner}/${this.repo}`)
+        
         const url = `https://api.github.com/repos/${this.owner}/${this.repo}/forks`
         const headers = this.headers
 
@@ -183,6 +195,7 @@ export class Github_API {
         const url =
             this.url +
             `/git/trees/${this.repo_details.default_branch}?recursive=0`
+        console.log('we are trying to find files in this url ' + url)
         const headers = this.headers
         const response = await fetch(url, { headers })
         if (!response.ok) {

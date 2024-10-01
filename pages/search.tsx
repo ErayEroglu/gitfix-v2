@@ -1,27 +1,18 @@
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/router'
-import { useSession, signOut } from 'next-auth/react'
 
 const Search = () => {
+    const [url, setUrl] = useState('');
     const [owner, setOwner] = useState('')
     const [repo, setRepo] = useState('')
-    const [authToken, setAuthToken] = useState('')
+    const [filePath, setFilePath] = useState('')
+    // const [authToken, setAuthToken] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [message, setMessage] = useState('')
     const [color, setColor] = useState('')
     const [logs, setLogs] = useState<string[]>([]) 
     const [polling, setPolling] = useState(false) 
-    const { data: session } = useSession()
     const [requestId, setRequestId] = useState<string | null>(null)
 
-    useEffect(() => {
-        if (session) {
-            setAuthToken(session.accessToken as string)
-        }
-    }, [session])
-
-    // Polling to check the status of the request
-    // This is used to update the logs on the client side
     useEffect(() => {
         let intervalId: NodeJS.Timeout | null = null
         if (polling) {
@@ -66,13 +57,26 @@ const Search = () => {
     // takes the owner, repo, and authToken as input and sends a GET request to the /api/gitfix route
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (owner && repo && authToken) {
+        const repoInfo = extractRepoInfo(url)
+        console.log('Repo Info:', repoInfo)
+        if (repoInfo) {
+            setOwner(repoInfo.owner)    
+            setRepo(repoInfo.repo)
+            let type = repoInfo.type
+            if (!type) {
+                setFilePath(repoInfo.filePath as string) 
+            }
+        }
+        console.log('Owner:', owner, 'Repo:', repo, 'Type:', repoInfo?.type,)
+        if (owner && repo) {
             setIsLoading(true)
             setMessage('')
-            setLogs([]) // Clear logs when a new request is made
+            setLogs([])
             try {
+                console.log('Filepath:', filePath)
+                const endpoint = filePath ? `/api/gitfix?owner=${owner}&repo=${repo}&type=${repoInfo?.type}&filePath=${filePath}` : `/api/gitfix?owner=${owner}&repo=${repo}&type=${repoInfo?.type}`
                 const response = await fetch(
-                    `/api/gitfix?owner=${owner}&repo=${repo}&auth=${authToken}`,
+                    endpoint,
                     {
                         method: 'GET',
                         headers: {
@@ -131,7 +135,7 @@ const Search = () => {
             }
         } else {
             setMessage(
-                'Please enter both owner and repository name, and ensure you are logged in.'
+                'Please check the link'
             )
         }
     }
@@ -145,7 +149,7 @@ const Search = () => {
                 marginTop: '50px',
             }}
         >
-            <h1>Enter GitHub Repository</h1>
+            <h1>GITFIX</h1>
             <form
                 onSubmit={handleSubmit}
                 style={{
@@ -156,16 +160,9 @@ const Search = () => {
             >
                 <input
                     type="text"
-                    placeholder="Owner"
-                    value={owner}
-                    onChange={(e) => setOwner(e.target.value)}
-                    style={{ margin: '10px', padding: '10px', width: '300px' }}
-                />
-                <input
-                    type="text"
-                    placeholder="Repository"
-                    value={repo}
-                    onChange={(e) => setRepo(e.target.value)}
+                    placeholder="Please enter the repository name or file URL" 
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
                     style={{ margin: '10px', padding: '10px', width: '300px' }}
                 />
                 <button
@@ -173,7 +170,7 @@ const Search = () => {
                     style={{ padding: '10px 20px', marginTop: '20px' }}
                     disabled={isLoading}
                 >
-                    {isLoading ? 'Processing...' : 'Proceed'}
+                    {isLoading ? 'Processing...' : 'Submit'}
                 </button>
             </form>
             {message && (
@@ -186,29 +183,46 @@ const Search = () => {
                     {message}
                 </p>
             )}
-            <button
-                onClick={() => signOut({ callbackUrl: '/' })}
-                style={{ padding: '10px 20px', marginTop: '20px' }}
-            >
-                Log Out
-            </button>
-            <div
-                style={{
-                    marginTop: '50px',
-                    width: '80%',
-                    maxHeight: '300px',
-                    overflowY: 'auto',
-                    backgroundColor: '#f1f1f1',
-                    padding: '20px',
-                    borderRadius: '5px',
-                }}
-            >
-                {logs.map((log, index) => (
-                    <p key={index}>{log}</p>
-                ))}
-            </div>
+            {logs.length > 0 && (
+                <div
+                    style={{
+                        marginTop: '50px',
+                        width: '80%',
+                        maxHeight: '300px',
+                        overflowY: 'auto',
+                        backgroundColor: '#f1f1f1',
+                        padding: '20px',
+                        borderRadius: '5px',
+                    }}
+                >
+                    {logs.map((log, index) => (
+                        <p key={index}>{log}</p>
+                    ))}
+                </div>
+            )}
         </div>
     )
 }
-
 export default Search
+
+
+function extractRepoInfo(url: string): { owner: string; repo: string; type: 0 | 1; filePath?: string } | null {
+    const cleanedUrl = url.endsWith('/') ? url.slice(0, -1) : url;
+    const urlParts = cleanedUrl.split('/');
+    console.log('URL parts:', urlParts)
+
+    if (urlParts.length === 5 && urlParts[2] === 'github.com') {
+        const owner = urlParts[3];
+        const repo = urlParts[4];
+        return { owner, repo, type: 1 };  // Repo URL identified
+    }
+
+    if (urlParts.length > 5 && urlParts[2] === 'github.com' && urlParts[5] === 'blob') {
+        const owner = urlParts[3];
+        const repo = urlParts[4];
+        const filePath = urlParts.slice(7).join('/');
+        return { owner, repo, type: 0, filePath };  // File URL identified
+    }
+
+    return null;
+}
