@@ -1,4 +1,4 @@
-import './globals.css'
+import '@/styles/globals.css'  // Change this import path
 import { Inter } from 'next/font/google'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -15,7 +15,7 @@ export default function RootLayout({
 }) {
     return (
         <html lang="en">
-            <body className={inter.className + ' flex flex-row'}>
+            <body className={inter.className}>
                 {children}
             </body>
         </html>

@@ -1,11 +1,11 @@
-// pages/_app.tsx
 import { SessionProvider } from 'next-auth/react';
 import { ComponentType } from 'react';
+import '@/styles/globals.css'  // Change this import path
 
 interface MyAppProps {
     Component: ComponentType<any>;
     pageProps: {
-        session: any; // Specify a better type if possible
+        session: any;
         [key: string]: any;
     };
 }
