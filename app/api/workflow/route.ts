@@ -62,7 +62,7 @@ type OpenAiResponse = {
 // }
 
 export const POST = serve(async (context) => {
-    conmsole.log('inside the post function at workflow endpoint')
+    console.log('inside the post function at workflow endpoint')
     const request: {
         file_content: string
         filePath: string
