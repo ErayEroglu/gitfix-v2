@@ -90,17 +90,7 @@ export const POST = serve(async (context) => {
     if (!qstashToken || !openaiToken) {
         throw new Error('QSTASH_TOKEN or OPENAI_API_KEY is not set')
     }
-    console.log('sending the task to the openai api' )
-    const response = await context.call<OpenAiResponse>(
-        `${forkedOwner}#${forkedRepo}#${filePath}`,
-        'https://api.openai.com/v1/chat/completions',
-        'POST',
-        {
-            model: 'gpt-4-turbo-preview',
-            messages: [
-                {
-                    role: 'system',
-                    content: `
+    const prompt = `
                 I want you to fix grammatical errors in a markdown file.
                 I will give you the file and you will correct grammatical errors in the text (paragraphs and headers).
                 Your response should be an array of json objects.
@@ -134,7 +124,18 @@ export const POST = serve(async (context) => {
                 DO NOT change the words with their synonyms.
                 DO NOT change or try to modify emojis.
                 DO NOT erase the front matter section. 
-                `,
+                `
+                
+    const response = await context.call<OpenAiResponse>(
+        `${forkedOwner}#${forkedRepo}#${filePath}`,
+        'https://api.openai.com/v1/chat/completions',
+        'POST',
+        {
+            model: 'gpt-4',
+            messages: [
+                {
+                    role: 'system',
+                    content:prompt,
                 },
                 { role: 'user', content: file_content },
             ],
