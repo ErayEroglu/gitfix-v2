@@ -1,8 +1,5 @@
 import { serve } from '@upstash/qstash/nextjs'
-import { Client, openai } from '@upstash/qstash'
-import { NextResponse } from 'next/server'
 import OpenAI from 'openai/index.mjs'
-import { parser } from '../gitfix/route'
 
 type OpenAiResponse = {
     choices: {

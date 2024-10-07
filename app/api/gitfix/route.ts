@@ -300,7 +300,7 @@ async function publishIntoQStash(
 }
 
 // helper function which parses the response from the AI model, used in the POST request handler
-export async function parser(
+async function parser(
     completion: OpenAI.Chat.Completions.ChatCompletion,
     file_content: string
 ) {
