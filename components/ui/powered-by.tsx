@@ -10,7 +10,7 @@ const PoweredBy: React.FC = () => {
       </p>
       <div className={styles.poweredByLinks}>
         <Link
-          href="https://upstash.com"
+          href="https://upstash.com/docs/qstash/workflow/getstarted"
           target="_blank"
           rel="noopener noreferrer"
           className={`${styles.link} ${styles.linkUpstash}`}
