@@ -11,7 +11,7 @@
         "test": "jest"
     },
     "dependencies": {
-        "@upstash/qstash": "^2.6.2",
+        "@upstash/qstash": "^2.7.12",
         "@upstash/redis": "^1.33.0",
         "@vercel/kv": "^2.0.0",
         "autoprefixer": "^10.4.19",
@@ -22,7 +22,6 @@
         "dotenv": "^16.4.5",
         "lucide-react": "^0.447.0",
         "next": "^14.2.14",
-        "next-auth": "^4.24.7",
         "openai": "^4.52.5",
         "postcss-import": "^16.1.0",
         "postcss-nested": "^6.2.0",

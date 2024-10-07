@@ -6,6 +6,10 @@ import OpenAI from 'openai'
 
 // handles the GET request from the client, the  search page
 // it will fork the repository and get the file content, then publish the task to QStash
+
+
+const baseUrl = process.env.NEXTAUTH_URL;
+
 export async function GET(request: Request) {
     try {
         //TODO: this part will be deleted
@@ -48,16 +52,31 @@ export async function GET(request: Request) {
                 for (const filePath of Object.keys(github.md_files_content)) {
                     counter++
                     const originalContent = github.md_files_content[filePath]
-                    await publishIntoQStash(
-                        originalContent,
-                        filePath,
-                        forkedOwner,
-                        forkedRepo,
-                        owner,
-                        repo,
-                        counter === numberOfFiles,
-                        type
-                    )
+                    // await publishIntoQStash(
+                    //     originalContent,
+                    //     filePath,
+                    //     forkedOwner,
+                    //     forkedRepo,
+                    //     owner,
+                    //     repo,
+                    //     counter === numberOfFiles,
+                    //     type
+                    // )
+                    const workflowUrl = `${baseUrl}/api/workflow`
+                    await fetch(workflowUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            originalContent,
+                            filePath,
+                            forkedOwner,
+                            forkedRepo,
+                            owner,
+                            repo,
+                            isLastFile: counter === numberOfFiles,
+                            type
+                        })
+                    })
                     // logs the selected file
                     controller.enqueue(
                         encoder.encode(
@@ -173,7 +192,6 @@ export async function POST(request: Request) {
         await github.createPullRequest(prTitle, prBody, forkedOwner, forkedRepo)
 
         if (isLastFile) {
-            const baseUrl = process.env.NEXTAUTH_URL;
             const statusUrl = `${baseUrl}/api/status`;
             const statusResponse = await fetch(statusUrl, {
                 method: 'POST',
@@ -282,7 +300,7 @@ async function publishIntoQStash(
 }
 
 // helper function which parses the response from the AI model, used in the POST request handler
-async function parser(
+export async function parser(
     completion: OpenAI.Chat.Completions.ChatCompletion,
     file_content: string
 ) {
