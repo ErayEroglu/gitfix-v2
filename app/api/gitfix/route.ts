@@ -62,7 +62,9 @@ export async function GET(request: Request) {
                     //     counter === numberOfFiles,
                     //     type
                     // )
-                    const workflowUrl = `${baseUrl}/api/workflow`
+                    const qstashUrl = process.env.QSTASH_URL as string;
+                    const workflowUrl = `${qstashUrl}/api/workflow`
+                    console.log('workflowUrl:', workflowUrl)
                     await fetch(workflowUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
