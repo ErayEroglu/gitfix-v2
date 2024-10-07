@@ -142,7 +142,7 @@ export const POST = serve(async (context) => {
         },
         { authorization: `Bearer ${process.env.OPENAI_API_KEY}` }
     )
-
+    console.log('response from openai api', response)
     // const corrections = response.choices[0].message
     //     .content as OpenAI.Chat.Completions.ChatCompletion
     // console.log(corrections)
