@@ -62,6 +62,7 @@ type OpenAiResponse = {
 // }
 
 export const POST = serve(async (context) => {
+    conmsole.log('inside the post function at workflow endpoint')
     const request: {
         file_content: string
         filePath: string
@@ -89,7 +90,7 @@ export const POST = serve(async (context) => {
     if (!qstashToken || !openaiToken) {
         throw new Error('QSTASH_TOKEN or OPENAI_API_KEY is not set')
     }
-
+    console.log('sending the task to the openai api' )
     const response = await context.call<OpenAiResponse>(
         `${forkedOwner}#${forkedRepo}#${filePath}`,
         'https://api.openai.com/v1/chat/completions',
