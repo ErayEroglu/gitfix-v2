@@ -64,7 +64,7 @@ type OpenAiResponse = {
 export const POST = serve(async (context) => {
     console.log('inside the post function at workflow endpoint')
     const request: {
-        file_content: string
+        originalContent: string
         filePath: string
         forkedOwner: string
         forkedRepo: string
@@ -74,7 +74,7 @@ export const POST = serve(async (context) => {
         type: string
     } = context.requestPayload as any
     const {
-        file_content,
+        originalContent,
         filePath,
         forkedOwner,
         forkedRepo,
@@ -84,7 +84,7 @@ export const POST = serve(async (context) => {
         type,
     } = request
 
-    console.log('file content'  + file_content + 'file path' + filePath + 'forked owner' + forkedOwner + 'forked repo' + forkedRepo + 'owner' + owner + 'repo' + repo + 'is last file' + isLastFile + 'type' + type)
+    console.log('file content '  + originalContent + 'file path ' + filePath + 'forked owner ' + forkedOwner + 'forked repo ' + forkedRepo + 'owner ' + owner + 'repo ' + repo + 'is last file ' + isLastFile + 'type ' + type)
 
     const qstashToken: string = process.env.QSTASH_TOKEN as string
     const openaiToken: string = process.env.OPENAI_API_KEY as string
@@ -105,7 +105,7 @@ export const POST = serve(async (context) => {
                 Explicity, the form of array will be this: 
                 \{corrections : [{
                     "filepath": "${filePath}",
-                    "originalContent": "${file_content}",
+                    "originalContent": "${originalContent}",
                     "forkedOwner": "${forkedOwner}",
                     "forkedRepo": "${forkedRepo}",
                     "owner": "${owner}",
@@ -139,18 +139,19 @@ export const POST = serve(async (context) => {
                     role: 'system',
                     content:prompt,
                 },
-                { role: 'user', content: file_content },
+                { role: 'user', content: originalContent },
             ],
             max_tokens: 150,
         },
         { authorization: `Bearer ${process.env.OPENAI_API_KEY}` }
     )
     console.log('response from openai api', response)
+    
+    
+    
     // const corrections = response.choices[0].message
     //     .content as OpenAI.Chat.Completions.ChatCompletion
     // console.log(corrections)
     // const parsedCorrections = parser(corrections, file_content)
     // console.log(parsedCorrections)
-
-    
 })
