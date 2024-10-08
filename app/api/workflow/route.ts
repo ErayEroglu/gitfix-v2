@@ -10,57 +10,6 @@ type OpenAiResponse = {
     }[]
 }
 
-// export async function POST(request: Request) {
-//     try {
-//         const { file_content, filePath, forkedOwner, forkedRepo, owner, repo, isLastFile, type } = await request.json();
-//         const qstashToken: string = process.env.QSTASH_TOKEN as string;
-//         const openaiToken: string = process.env.OPENAI_API_KEY as string;
-
-//         if (!qstashToken || !openaiToken) {
-//             throw new Error('QSTASH_TOKEN or OPENAI_API_KEY is not set');
-//         }
-
-//         const client: Client = new Client({
-//             token: qstashToken,
-//         });
-
-//         const result = await client.publishJSON({
-//             api: {
-//                 name: 'llm',
-//                 provider: openai({ token: openaiToken }),
-//             },
-//             body: {
-//                 messages: [
-//                     {
-//                         role: 'system',
-//                         content: `
-//                             I want you to fix grammatical errors in a markdown file.
-//                             Your response should be an array of json objects.
-//                             Follow the same rules for grammar correction as previously.
-//                         `,
-//                     },
-//                     { role: 'user', content: file_content },
-//                 ],
-//                 response_format: { type: 'json_object' },
-//                 model: 'gpt-4-turbo-preview',
-//                 temperature: 0,
-//             },
-//             callback: process.env.NEXTAUTH_URL + '/api/gitfix',
-//         });
-
-//         return NextResponse.json({
-//             message: 'Job is submitted to Upstash Workflow.',
-//             qstashMessageId: result.messageId,
-//         });
-//     } catch (error) {
-//         console.error('Error submitting workflow:', error);
-//         return NextResponse.json(
-//             { message: 'Failed to submit workflow', error: (error as any).message },
-//             { status: 500 }
-//         );
-//     }
-// }
-
 export const POST = serve(async (context) => {
     console.log('inside the post function at workflow endpoint')
     const request: {
@@ -129,11 +78,11 @@ export const POST = serve(async (context) => {
                 `
                 
     const response = await context.call<OpenAiResponse>(
-        `${forkedOwner}#${forkedRepo}#${filePath}`,
+        `markdown grammar correction`,
         'https://api.openai.com/v1/chat/completions',
         'POST',
         {
-            model: 'gpt-4',
+            model: 'gpt-4-turbo-preview',
             messages: [
                 {
                     role: 'system',
@@ -141,17 +90,8 @@ export const POST = serve(async (context) => {
                 },
                 { role: 'user', content: originalContent },
             ],
-            max_tokens: 150,
         },
         { authorization: `Bearer ${process.env.OPENAI_API_KEY}` }
     )
-    console.log('response from openai api', response)
-    
-    
-    
-    // const corrections = response.choices[0].message
-    //     .content as OpenAI.Chat.Completions.ChatCompletion
-    // console.log(corrections)
-    // const parsedCorrections = parser(corrections, file_content)
-    // console.log(parsedCorrections)
+    console.log('response from openai api', response.choices[0].message.content)
 })

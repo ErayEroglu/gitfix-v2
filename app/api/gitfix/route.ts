@@ -1,15 +1,14 @@
 import { NextResponse } from 'next/server'
 import { Github_API } from '@/lib/github-api'
 import { addFixedFile, isFileFixed, clearDatabase } from '@/lib/redis-utils'
-import { Client, openai, upstash } from '@upstash/qstash'
+import { Chat, Client, openai, upstash } from '@upstash/qstash'
 import OpenAI from 'openai'
-
-// handles the GET request from the client, the  search page
-// it will fork the repository and get the file content, then publish the task to QStash
-
+import { serve } from '@upstash/qstash/nextjs'
 
 const baseUrl = process.env.NEXTAUTH_URL;
 
+// handles the GET request from the client, the  search page
+// it will fork the repository and get the file content, then publish the task to QStash
 export async function GET(request: Request) {
     try {
         //TODO: this part will be deleted
