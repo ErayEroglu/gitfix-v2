@@ -52,32 +52,32 @@ export async function GET(request: Request) {
                 for (const filePath of Object.keys(github.md_files_content)) {
                     counter++
                     const originalContent = github.md_files_content[filePath]
-                    await publishIntoQStash(
-                        originalContent,
-                        filePath,
-                        forkedOwner,
-                        forkedRepo,
-                        owner,
-                        repo,
-                        counter === numberOfFiles,
-                        type
-                    )
-                    // const workflowUrl = `${baseUrl}/api/workflow`
-                    // console.log('workflowUrl:', workflowUrl)
-                    // await fetch(workflowUrl, {
-                    //     method: 'POST',
-                    //     headers: { 'Content-Type': 'application/json' },
-                    //     body: JSON.stringify({
-                    //         originalContent,
-                    //         filePath,
-                    //         forkedOwner,
-                    //         forkedRepo,
-                    //         owner,
-                    //         repo,
-                    //         isLastFile: counter === numberOfFiles,
-                    //         type
-                    //     })
-                    // })
+                    // await publishIntoQStash(
+                    //     originalContent,
+                    //     filePath,
+                    //     forkedOwner,
+                    //     forkedRepo,
+                    //     owner,
+                    //     repo,
+                    //     counter === numberOfFiles,
+                    //     type
+                    // )
+                    const workflowUrl = `${baseUrl}/api/workflow`
+                    console.log('workflowUrl:', workflowUrl)
+                    await fetch(workflowUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            originalContent,
+                            filePath,
+                            forkedOwner,
+                            forkedRepo,
+                            owner,
+                            repo,
+                            isLastFile: counter === numberOfFiles,
+                            type
+                        })
+                    })
                     // logs the selected file
                     controller.enqueue(
                         encoder.encode(

@@ -84,6 +84,8 @@ export const POST = serve(async (context) => {
         type,
     } = request
 
+    console.log('file content'  + file_content + 'file path' + filePath + 'forked owner' + forkedOwner + 'forked repo' + forkedRepo + 'owner' + owner + 'repo' + repo + 'is last file' + isLastFile + 'type' + type)
+
     const qstashToken: string = process.env.QSTASH_TOKEN as string
     const openaiToken: string = process.env.OPENAI_API_KEY as string
 
@@ -149,4 +151,6 @@ export const POST = serve(async (context) => {
     // console.log(corrections)
     // const parsedCorrections = parser(corrections, file_content)
     // console.log(parsedCorrections)
+
+    
 })
