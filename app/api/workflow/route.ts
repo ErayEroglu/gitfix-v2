@@ -1,6 +1,6 @@
 import { serve } from '@upstash/qstash/nextjs'
-import OpenAI from 'openai/index.mjs'
-4
+import OpenAI from 'openai'
+
 type OpenAiResponse = {
     choices: {
         message: {
@@ -9,6 +9,10 @@ type OpenAiResponse = {
         }
     }[]
 }
+export function GET() {
+    return 'Hello from the workflow endpoint'
+}
+
 
 export const POST = serve(async (context) => {
     console.log('inside the post function at workflow endpoint')
