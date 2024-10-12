@@ -10,7 +10,7 @@ type OpenAiResponse = {
     }[]
 }
 export function GET() {
-    return 'Hello from the workflow endpoint'
+    return new Response('Hello from the workflow endpoint!')
 }
 
 
