@@ -1,6 +1,6 @@
 import { serve } from '@upstash/qstash/nextjs'
 import OpenAI from 'openai/index.mjs'
-
+4
 type OpenAiResponse = {
     choices: {
         message: {
@@ -32,8 +32,6 @@ export const POST = serve(async (context) => {
         isLastFile,
         type,
     } = request
-
-    console.log('file content '  + originalContent + 'file path ' + filePath + 'forked owner ' + forkedOwner + 'forked repo ' + forkedRepo + 'owner ' + owner + 'repo ' + repo + 'is last file ' + isLastFile + 'type ' + type)
 
     const qstashToken: string = process.env.QSTASH_TOKEN as string
     const openaiToken: string = process.env.OPENAI_API_KEY as string
