@@ -61,7 +61,7 @@ export async function GET(request: Request) {
                     //     counter === numberOfFiles,
                     //     type
                     // )
-                    const workflowUrl = `${baseUrl}/api/llm-task`
+                    const workflowUrl = `${baseUrl}/api/workflow`
                     console.log('workflowUrl:', workflowUrl)
                     await fetch(workflowUrl, {
                         method: 'POST',
