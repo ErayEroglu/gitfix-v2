@@ -80,7 +80,7 @@ export default function Search() {
                 } catch (error) {
                     console.error('Polling error:', error)
                 }
-            }, 3000)
+            }, 1000)
         }
 
         return () => {
