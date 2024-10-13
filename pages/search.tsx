@@ -40,7 +40,7 @@ export default function Search() {
                 owner: urlParts[3],
                 repo: urlParts[4],
                 type: 0,
-                filePath: urlParts[7],
+                filePath: urlParts.slice(7).join('/'),
             }
         }
 
