@@ -42,10 +42,7 @@ export class Github_API {
     }
 
     // fork the target repo
-    async forkRepository(): Promise<any[]> {
-
-        console.log(`Forking repository ${this.owner}/${this.repo}`)
-        
+    async forkRepository(): Promise<any[]> {        
         const url = `https://api.github.com/repos/${this.owner}/${this.repo}/forks`
         const headers = this.headers
 
@@ -187,7 +184,7 @@ export class Github_API {
     }
 
     private async getMdFiles(): Promise<void> {
-        if (!this.inputType && this.filePath) {
+        if (!this.inputType) {
             const fileUrl = `${this.url}/contents/${this.filePath}`;
             const headers = this.headers;
             const response = await fetch(fileUrl, { headers });

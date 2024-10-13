@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server'
 import { Github_API } from '@/lib/github-api'
 import { addFixedFile, isFileFixed, clearDatabase } from '@/lib/redis-utils'
-import { Chat, Client, openai, upstash } from '@upstash/qstash'
-import OpenAI from 'openai'
-import { serve } from '@upstash/qstash/nextjs'
-import { Console } from 'console'
 
 const baseUrl = process.env.NEXTAUTH_URL
 
@@ -19,7 +15,6 @@ export async function GET(request: Request) {
         const repo = searchParams.get('repo')
         const typeParam = searchParams.get('type')
         const type = typeParam !== null ? Number(typeParam) : NaN
-        console.log('owner:', owner, 'repo:', repo, 'type:', type)
 
         if (!owner || !repo) {
             return NextResponse.json(
@@ -36,22 +31,58 @@ export async function GET(request: Request) {
             await github.initializeRepoDetails()
         }
 
-        console.log('trying to fork the repo')
         const forked_repo_info = await github.forkRepository()
-        console.log('repo is forked')
         const forkedOwner = forked_repo_info[0]
         const forkedRepo = forked_repo_info[1]
         await github.getFileContent()
-
-        console.log('file content is extracted')
         const encoder = new TextEncoder()
         const customReadable = new ReadableStream({
             async start(controller) {
                 let counter = 0
                 let numberOfFiles = Object.keys(github.md_files_content).length
+
+                controller.enqueue(
+                    encoder.encode(
+                        JSON.stringify({
+                            message: 'Starting repository forking process.',
+                        }) + '#'
+                    )
+                )
+
                 for (const filePath of Object.keys(github.md_files_content)) {
                     counter++
                     const originalContent = github.md_files_content[filePath]
+
+                    controller.enqueue(
+                        encoder.encode(
+                            JSON.stringify({
+                                message: `Forking repository: ${owner}/${repo}`,
+                            }) + '#'
+                        )
+                    )
+
+                    // Fork the repository
+                    const forked_repo_info = await github.forkRepository()
+                    const forkedOwner = forked_repo_info[0]
+                    const forkedRepo = forked_repo_info[1]
+
+                    controller.enqueue(
+                        encoder.encode(
+                            JSON.stringify({
+                                message: `Fetching file content from ${filePath}`,
+                            }) + '#'
+                        )
+                    )
+
+                    controller.enqueue (
+                        encoder.encode(
+                            JSON.stringify({
+                                message: `Sending the file content to Upstash Workflow, where the AI service will correct the grammatical errors.`,
+                            }) + '#'
+                        )
+                    )
+
+                    // Send to QStash Workflow or AI service
                     const workflowUrl = `${baseUrl}/api/workflow`
                     await fetch(workflowUrl, {
                         method: 'POST',
@@ -67,35 +98,17 @@ export async function GET(request: Request) {
                             type,
                         }),
                     })
-                    // logs the selected file
+
                     controller.enqueue(
                         encoder.encode(
                             JSON.stringify({
-                                message: `Selected file : ${filePath}`,
-                            }) + '#' // Adding a delimiter for better handling in frontend
+                                message: `Waiting for the AI service to correct the grammatical errors in the file, this may take a while.`,
+                            }) + '#'
                         )
                     )
+
                 }
 
-                if (counter === 0) {
-                    controller.enqueue(
-                        encoder.encode(
-                            JSON.stringify({
-                                message:
-                                    'No files to fix, either all files are already fixed or there is not any markdown file. Please try again with a different repository.',
-                            }) + '#'
-                        )
-                    )
-                } else {
-                    controller.enqueue(
-                        encoder.encode(
-                            JSON.stringify({
-                                message:
-                                    'Job is submitted to the AI model, please wait for the response. We will let you know when the job is completed.',
-                            }) + '#'
-                        )
-                    )
-                }
                 controller.close()
             },
         })
@@ -138,7 +151,7 @@ export async function POST(request: Request) {
             type,
             corrections,
         } = body
-        
+
         const correctedContent = corrections
         if (
             !filePath ||

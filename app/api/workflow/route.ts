@@ -9,6 +9,9 @@ type OpenAiResponse = {
         }
     }[]
 }
+
+const baseUrl = process.env.NEXTAUTH_URL
+
 export function GET() {
     return new Response('Hello from the workflow endpoint!')
 }
@@ -24,7 +27,6 @@ export const POST = serve<{
     type: string
 }>(
     async (context) => {
-        console.log('inside the post function at workflow endpoint')
         const request = context.requestPayload
         const {
             originalContent,
@@ -45,19 +47,13 @@ export const POST = serve<{
         }
 
         const prompt = `
-        I want you to fix grammatical errors in a markdown file.
-        Here is the file:
-        Filepath: ${filePath}
-        Owner: ${owner}
-        Repository: ${repo}
-        Forked Owner: ${forkedOwner}
-        Forked Repository: ${forkedRepo}
-        Is Last File: ${isLastFile}
-        Type: ${type}
-
+        I want you to fix grammatical errors in a given markdown file.
         Correct the grammatical errors in the file line by line. 
         Do not modify code blocks, paths, or links.
-    `
+        Code blocks are untouchable ,DO NOT perform any action if you detect code blocks, paths or links.
+        DO NOT change the words with their synonyms.
+        DO NOT change or try to modify emojis.
+        `
         const response = await context.call<OpenAiResponse>(
             'markdown grammar correction',
             'https://api.openai.com/v1/chat/completions',
@@ -93,7 +89,7 @@ export const POST = serve<{
                     repo,
                     isLastFile,
                     type,
-                    corrections
+                    corrections,
                 }),
             }
         )
@@ -101,8 +97,6 @@ export const POST = serve<{
         if (!gitfixResponse.ok) {
             throw new Error('Failed to send corrections to GitFix endpoint')
         }
-
-        console.log('GitFix response is sent successfully')
     },
     {
         // Conditionally set in development, but not in production
