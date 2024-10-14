@@ -47,26 +47,18 @@ export const POST = serve<{
         }
 
         const prompt = `
-        I want you to fix grammatical errors in a given markdown file.
-        Correct the grammatical errors in the file line by line.
-        - DO NOT change words with their synonyms.
-        - DO NOT change the meaning of any sentences.
-        - DO NOT remove or add any content to the file.
-        - DO NOT summarize the content.
-        - DO NOT shorten the content.
-        - DO NOT change the structure of the content.
-        - DO NOT change the format of the content.
-
-        **For code blocks:**
-        - DO NOT modify, remove, or alter them in any way.
-        - Leave all code blocks exactly as they are, without changes.
-        - DO NOT correct any errors in code blocks.
-        - DO NOT add comments to the code blocks.
-
-        **For emojis and other special symbols:**
-        - ONLY correct grammatical errors.
-        - DO NOT change emojis, special symbols, or any non-text elements. Let them remain as they are.
-        - DO NOT remove non-text elements. 
+        I want you to fix grammatical errors in a markdown file.
+        I will give you the file and you will correct grammatical errors in the text (paragraphs and headers).
+        You should only correct what is given in the file, do not add anything to the original text.
+        Code blocks are untouchable ,DO NOT perform any action if you detect code blocks, paths or links.
+        DO NOT change any of the code blocks, including the strings, comments and indentations inside the code block.
+        DO NOT alter any part of the code blocks, codes, paths or links.
+        In the front matter section, change only the title and summary if they are given in the original file.
+        Change the errors line by line and do not merge lines. Do not copy the content of one line to the other.
+        DO NOT merge lines.
+        DO NOT change the words with their synonyms.
+        DO NOT change or try to modify emojis.
+        DO NOT erase the front matter section. 
         `  
         const response = await context.call<OpenAiResponse>(
             'markdown grammar correction',

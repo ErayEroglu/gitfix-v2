@@ -40,3 +40,23 @@ export async function POST(request: Request) {
         return new Response('Internal server error', { status: 500 })
     }
 }
+
+// This is the API route that will be called to clear the logs
+// It resets the status of the request to 'in-progress'
+export async function DELETE(request: Request) {
+    try {
+        const body = await request.json();
+        const id = body.id;
+        if (!id) {
+            return new Response('Missing request ID', { status: 400 });
+        }
+
+        // Reset the status to 'in-progress'
+        statusMap[id] = 'in-progress';
+    
+        return new Response(JSON.stringify({ message: 'Logs cleared and status reset to in-progress' }), { status: 200 });
+    } catch (error) {
+        console.error('Error clearing logs:', error);
+        return new Response('Internal server error', { status: 500 });
+    }
+}

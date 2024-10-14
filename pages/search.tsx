@@ -99,6 +99,7 @@ export default function Search() {
             setOwner(repoInfo.owner)
             setRepo(repoInfo.repo)
             setIsLoading(true)
+            await clearLogs(repoInfo.owner, repoInfo.repo)
             setMessage('')
             try {
                 let endpoint = `/api/gitfix?owner=${repoInfo.owner}&repo=${repoInfo.repo}&type=${repoInfo.type}`
@@ -162,6 +163,27 @@ export default function Search() {
             setMessage('Please check the link')
         }
     }
+
+    const clearLogs = async (owner: string, repo: string) => {
+        try {
+            const response = await fetch('/api/status', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: `${owner}@${repo}` }),
+            });
+    
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error('Error clearing logs:', errorData);
+                setMessage(`Error clearing logs: ${errorData.message}`);
+            } else {
+                console.log('Logs cleared successfully');
+            }
+        } catch (error) {
+            console.error('Error clearing logs:', error);
+            setMessage('An unexpected error occurred while clearing logs.');
+        }
+    };
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
