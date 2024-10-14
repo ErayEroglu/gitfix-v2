@@ -166,10 +166,10 @@ export default function Search() {
 
     const clearLogs = async (owner: string, repo: string) => {
         try {
-            const response = await fetch('/api/status', {
+            const id = `${owner}@${repo}`;
+            const response = await fetch(`/api/status?id=${id}`, {
                 method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: `${owner}@${repo}` }),
+                headers: { 'Content-Type': 'application/json' }, // DELETE typically doesn't require a body, so this header can be optional
             });
     
             if (!response.ok) {
@@ -178,6 +178,7 @@ export default function Search() {
                 setMessage(`Error clearing logs: ${errorData.message}`);
             } else {
                 console.log('Logs cleared successfully');
+                setMessage('Logs cleared successfully.');
             }
         } catch (error) {
             console.error('Error clearing logs:', error);

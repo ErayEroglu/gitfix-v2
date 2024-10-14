@@ -45,8 +45,8 @@ export async function POST(request: Request) {
 // It resets the status of the request to 'in-progress'
 export async function DELETE(request: Request) {
     try {
-        const body = await request.json();
-        const id = body.id;
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id');
         if (!id) {
             return new Response('Missing request ID', { status: 400 });
         }
