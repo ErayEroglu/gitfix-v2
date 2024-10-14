@@ -48,17 +48,26 @@ export const POST = serve<{
 
         const prompt = `
         I want you to fix grammatical errors in a given markdown file.
-        Correct the grammatical errors in the file line by line. 
-        DO NOT change the words with their synonyms.
-        DO NOT try to change the meaning of the sentences.
-        DO NOT remove any content from the file.
-        DO NOT add any content to the file.
-        DO NOT summarize the content.
-        ONLY correct the grammatical errors, DO NOT change semantic meaning.
-        DO NOT modify code blocks, paths, or links.
-        Code blocks are untouchable ,DO NOT perform any action if you detect code blocks, paths or links.
-        DO NOT change or try to modify emojis.
-        `
+        Correct the grammatical errors in the file line by line.
+        - DO NOT change words with their synonyms.
+        - DO NOT change the meaning of any sentences.
+        - DO NOT remove or add any content to the file.
+        - DO NOT summarize the content.
+        - DO NOT shorten the content.
+        - DO NOT change the structure of the content.
+        - DO NOT change the format of the content.
+
+        **For code blocks:**
+        - DO NOT modify, remove, or alter them in any way.
+        - Leave all code blocks exactly as they are, without changes.
+        - DO NOT correct any errors in code blocks.
+        - DO NOT add comments to the code blocks.
+
+        **For emojis and other special symbols:**
+        - ONLY correct grammatical errors.
+        - DO NOT change emojis, special symbols, or any non-text elements. Let them remain as they are.
+        - DO NOT remove non-text elements. 
+        `  
         const response = await context.call<OpenAiResponse>(
             'markdown grammar correction',
             'https://api.openai.com/v1/chat/completions',

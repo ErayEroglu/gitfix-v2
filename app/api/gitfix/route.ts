@@ -26,7 +26,8 @@ export async function GET(request: Request) {
 
         if (!type) {
             const filePath = searchParams.get('filePath')
-            await github.initializeRepoDetails(filePath)
+            const inputBranch = searchParams.get('branch')
+            await github.initializeRepoDetails(filePath, inputBranch)
         } else {
             await github.initializeRepoDetails()
         }
@@ -60,11 +61,6 @@ export async function GET(request: Request) {
                             }) + '#'
                         )
                     )
-
-                    // Fork the repository
-                    const forked_repo_info = await github.forkRepository()
-                    const forkedOwner = forked_repo_info[0]
-                    const forkedRepo = forked_repo_info[1]
 
                     controller.enqueue(
                         encoder.encode(
@@ -153,6 +149,7 @@ export async function POST(request: Request) {
         } = body
 
         const correctedContent = corrections
+        console.log('Corrected content is fetched from workflow')
         if (
             !filePath ||
             !originalContent ||
@@ -165,19 +162,33 @@ export async function POST(request: Request) {
         }
         const github = new Github_API(owner, repo, type)
         await github.initializeRepoDetails()
-        await github.updateFileContent(
-            filePath,
-            correctedContent,
-            forkedOwner,
-            forkedRepo,
-            true
-        )
+        console.log('Uploading the corrected content to the forked repository')
+        try {
+            await github.updateFileContent(
+                filePath,
+                correctedContent,
+                forkedOwner,
+                forkedRepo,
+                true
+            )
+        }
+        catch (error) {
+            await github.updateFileContent(
+                filePath,
+                correctedContent,
+                forkedOwner,
+                forkedRepo,
+                true,
+                'master'
+            )
+        }
         await addFixedFile(`${forkedOwner}@${forkedRepo}@${filePath}`)
         const prTitle = 'Fix grammatical errors in markdown files by Gitfix'
         const prBody =
             'This pull request fixes grammatical errors in the markdown files. ' +
             'Changes are made by Gitfix, which is an AI-powered application, ' +
             'aims to help developers in their daily tasks.'
+        console.log('Creating a pull request')
         await github.createPullRequest(prTitle, prBody, forkedOwner, forkedRepo)
 
         if (isLastFile) {

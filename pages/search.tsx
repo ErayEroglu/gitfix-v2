@@ -12,6 +12,7 @@ interface RepoInfo {
     repo: string
     type: 0 | 1
     filePath?: string
+    branch?: string
 }
 
 export default function Search() {
@@ -41,6 +42,7 @@ export default function Search() {
                 repo: urlParts[4],
                 type: 0,
                 filePath: urlParts.slice(7).join('/'),
+                branch: urlParts[6],
             }
         }
 
@@ -90,6 +92,7 @@ export default function Search() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        setLogs([])
         const repoInfo = extractRepoInfo(url)
         console.log('repoInfo : ', repoInfo)
         if (repoInfo) {
@@ -97,7 +100,6 @@ export default function Search() {
             setRepo(repoInfo.repo)
             setIsLoading(true)
             setMessage('')
-            setLogs([])
             try {
                 let endpoint = `/api/gitfix?owner=${repoInfo.owner}&repo=${repoInfo.repo}&type=${repoInfo.type}`
                 if (!repoInfo.type) {

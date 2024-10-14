@@ -15,12 +15,14 @@ export class Github_API {
     fileLimit: number = 1
     filePath: string
     inputType: number
+    branch: string
 
-    constructor(owner: string, repo: string, inputType : number, filePath?: string | null) {
+    constructor(owner: string, repo: string, inputType : number, filePath?: string | null, branch?: string) {
         this.owner = owner
         this.repo = repo
         this.inputType = inputType
         this.filePath = filePath as string
+        this.branch = branch as string
         this.items = []
         this.updatedItems = []
         this.md_files_content = {}
@@ -28,9 +30,10 @@ export class Github_API {
         this.headers = this.getHeaders()
     }
 
-    async initializeRepoDetails(filePath?: string | null): Promise<void> {
+    async initializeRepoDetails(filePath?: string | null, branch?: string | null): Promise<void> {
         if (!this.inputType) {
             this.filePath = filePath as string
+            this.branch = branch as string
         }
         this.repo_details = await this.getRepoDetails()
     }
@@ -70,13 +73,22 @@ export class Github_API {
         content: string,
         forkedOwner: string,
         forkedRepo: string,
-        flag: boolean
+        flag: boolean,
+        inputBranch?: string | null
     ): Promise<void> {
         const url = `https://api.github.com/repos/${forkedOwner}/${forkedRepo}/contents/${filePath}`
         const headers = this.headers
         const encodedContent = this.encodeBase64(content)
-        const branch = await this.setBranch(forkedOwner, flag)
-        const sha = await this.getFileSHA(url, headers, branch)
+        let branch = inputBranch as string
+        if (!branch) {
+            branch = await this.setBranch(forkedOwner, flag)
+        }
+        let sha = ''
+        try {
+            sha = await this.getFileSHA(url, headers, branch)
+        } catch (error) {
+            sha = await this.getFileSHA(url, headers, branch)
+        }
         const body = JSON.stringify({
             message: `Update ${filePath}`,
             content: encodedContent,
@@ -109,9 +121,10 @@ export class Github_API {
     ): Promise<void> {
         const url = `https://api.github.com/repos/${this.owner}/${this.repo}/pulls`
         const headers = this.headers
-        const defaultBranch = await this.getDefaultBranch(this.owner, this.repo)
         const head = await this.setBranch(forkedOwner, false)
-        if (await this.checkExistingPR(head, this.owner, this.repo)) {
+        const base = await this.getDefaultBranch(this.owner, this.repo)
+
+        if (await this.checkExistingPR(head, forkedOwner)) {
             console.log('Pull request already exists')
             return
         }
@@ -122,14 +135,29 @@ export class Github_API {
             body: JSON.stringify({
                 title: title,
                 head: `${forkedOwner}:${head}`,
-                base: defaultBranch,
+                base: base,
                 body: body,
                 maintainer_can_modify: true,
             }),
         })
 
         if (!response.ok) {
-            throw new Error(`Failed to create pull request: ${response.status}`)
+            const newResponse = await fetch(url, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({
+                    title: title,
+                    head: `${forkedOwner}:master`,
+                    base: base,
+                    body: body,
+                    maintainer_can_modify: true,
+                }),
+            })
+            if (!newResponse.ok) {
+                throw new Error(
+                    `Failed to create pull request: ${newResponse.status}`
+                )
+            }
         }
 
         const data = await response.json()
@@ -322,21 +350,33 @@ export class Github_API {
 
     async checkExistingPR(
         branch: string,
-        targetOwner: string,
-        targetRepo: string
+        forkedOwner: string
     ): Promise<boolean> {
-        const url = `https://api.github.com/repos/${targetOwner}/${targetRepo}/pulls?head=${this.owner}:${branch}&state=open`
-        const response = await fetch(url, { headers: this.headers })
+        const url = `https://api.github.com/repos/${this.owner}/${this.repo}/pulls?head=${forkedOwner}:${branch}&state=open`
+        let response = await fetch(url, { headers: this.headers })
 
         if (!response.ok) {
-            const errorText = await response.text()
+            const errorData = await response.json()
             throw new Error(
-                `Failed to check for existing PRs: ${response.status} - ${errorText}`
+                `Error fetching existing PRs: ${response.status} ${errorData.message}`
             )
         }
 
         const pulls = await response.json()
-        return pulls.length > 0
+        if (pulls.length > 0) {
+            return true
+        }
+
+        const newUrl = `https://api.github.com/repos/${this.owner}/${this.repo}/pulls?head=${forkedOwner}:master&state=open`
+        const newResponse = await fetch(newUrl, { headers: this.headers })
+        if (!newResponse.ok) {
+            const errorData = await newResponse.json()
+            throw new Error(
+                `Error fetching existing PRs: ${newResponse.status} ${errorData.message}`
+            )
+        }
+        const newPulls = await newResponse.json()
+        return newPulls.length > 0
     }
 
     // reposityory information
