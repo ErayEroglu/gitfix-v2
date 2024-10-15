@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-const statusMap: Record<string, "in-progress" | "completed"> = {}
+let statusMap: Record<string, "in-progress" | "completed"> = {}
 
 // This is the API route that will be called by the client
 // to check the status of the request

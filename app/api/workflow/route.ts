@@ -53,6 +53,7 @@ export const POST = serve<{
         Code blocks are untouchable ,DO NOT perform any action if you detect code blocks, paths or links.
         DO NOT change any of the code blocks, including the strings, comments and indentations inside the code block.
         DO NOT alter any part of the code blocks, codes, paths or links.
+        DO NOT change quotation marks, brackets, parentheses, or any other special characters, including the ones in the code blocks.
         In the front matter section, change only the title and summary if they are given in the original file.
         Change the errors line by line and do not merge lines. Do not copy the content of one line to the other.
         DO NOT merge lines.
