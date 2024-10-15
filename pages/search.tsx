@@ -246,6 +246,7 @@ export default function Search() {
                     )}
 
                     {logs.length > 0 && (
+                        console.log('logs:', logs),
                         <Card className="mt-6 max-h-64 overflow-y-auto">
                             <CardHeader>
                                 <CardTitle className="text-lg">

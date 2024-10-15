@@ -12,7 +12,7 @@ export async function GET(request: Request) {
         if (!id) {
             return NextResponse.json("in-progress")
         }
-        
+        console.log('statusMap[id]:', statusMap[id])
         const status = statusMap[id] || "in-progress"
         return NextResponse.json({ status: `${status}`})
         } catch (error) {
