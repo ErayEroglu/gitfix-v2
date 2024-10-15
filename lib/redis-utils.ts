@@ -28,6 +28,15 @@ export async function getAllFixedFiles(): Promise<string[]> {
     return result
 }
 
+export async function storeItem(key: string, value: string): Promise<void> {
+    await redis.set(key, value)
+}
+
+export async function getItem(key: string): Promise<string | null> {
+    const value = await redis.get(key)
+    return value as string
+}
+
 export async function clearDatabase(): Promise<void> {
     await redis.flushall()
 }

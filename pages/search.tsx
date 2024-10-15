@@ -6,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Loader2, AlertCircle } from 'lucide-react'
 import UpstashLogo from '@/components/ui/upstash-logo'
 import PoweredBy from '@/components/ui/powered-by'
+import { getItem } from '@/lib/redis-utils'
 
 interface RepoInfo {
     owner: string
@@ -23,6 +24,7 @@ export default function Search() {
     const [message, setMessage] = useState('')
     const [logs, setLogs] = useState<string[]>([])
     const [polling, setPolling] = useState(false)
+    const [taskID, setTaskID] = useState('')
 
     const extractRepoInfo = useCallback((url: string): RepoInfo | null => {
         const cleanedUrl = url.endsWith('/') ? url.slice(0, -1) : url
@@ -54,29 +56,41 @@ export default function Search() {
         if (polling) {
             intervalId = setInterval(async () => {
                 try {
-                    const response = await fetch(
-                        `/api/status?id=${owner}@${repo}`,
-                        {
-                            method: 'GET',
-                            headers: { 'Content-Type': 'application/json' },
-                        }
-                    )
-                    if (response.ok) {
-                        const data = await response.json()
-                        if (data.status === 'completed') {
-                            setLogs((prevLogs) => [
-                                ...prevLogs,
-                                'Pull request created, you can check your repository.',
-                            ])
-                            setPolling(false)
-                            setMessage(
-                                'All files are processed. The pull request has been created.'
-                            )
-                        }
-                    } else {
-                        console.error(
-                            'Failed to fetch status:',
-                            await response.text()
+                    // const response = await fetch(
+                    //     `/api/status?id=${owner}@${repo}`,
+                    //     {
+                    //         method: 'GET',
+                    //         headers: { 'Content-Type': 'application/json' },
+                    //     }
+                    // )
+                    // if (response.ok) {
+                    //     const data = await response.json()
+                    //     if (data.status === 'completed') {
+                    //         setLogs((prevLogs) => [
+                    //             ...prevLogs,
+                    //             'Pull request created, you can check your repository.',
+                    //         ])
+                    //         setPolling(false)
+                    //         setMessage(
+                    //             'All files are processed. The pull request has been created.'
+                    //         )
+                    //     }
+                    // } else {
+                    //     console.error(
+                    //         'Failed to fetch status:',
+                    //         await response.text()
+                    //     )
+                    // }
+
+                    if (await getItem(`${taskID}`) === 'completed') {
+                        console.log('inside PR log')
+                        setLogs((prevLogs) => [
+                            ...prevLogs,
+                            'Pull request created, you can check your repository.',
+                        ])
+                        setPolling(false)
+                        setMessage(
+                            'All files are processed. The pull request has been created.'
                         )
                     }
                 } catch (error) {
@@ -114,6 +128,7 @@ export default function Search() {
 
                 if (response.ok) {
                     setPolling(true)
+                    setTaskID(response.statusText)
                     const reader = response.body?.getReader()
                     const decoder = new TextDecoder()
                     let accumulatedData = ''

@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
 import { Github_API } from '@/lib/github-api'
-import { addFixedFile, isFileFixed, clearDatabase } from '@/lib/redis-utils'
+import { addFixedFile, isFileFixed, clearDatabase, storeItem, getItem } from '@/lib/redis-utils'
 
 const baseUrl = process.env.NEXTAUTH_URL
 
 // handles the GET request from the client, the  search page
+
 // it will fork the repository and get the file content, then publish the task to QStash
 export async function GET(request: Request) {
     try {
@@ -22,7 +23,11 @@ export async function GET(request: Request) {
                 { status: 400 }
             )
         }
+        const time = getCurrentTime()
+        const taskID = `${owner}@${repo}@${time}`
+        await storeItem(taskID, 'in-progress')
         const github = new Github_API(owner, repo, type)
+
 
         if (!type) {
             const filePath = searchParams.get('filePath')
@@ -92,6 +97,7 @@ export async function GET(request: Request) {
                             repo,
                             isLastFile: counter === numberOfFiles,
                             type,
+                            taskID
                         }),
                     })
 
@@ -119,7 +125,7 @@ export async function GET(request: Request) {
                 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version',
         }
 
-        return new Response(customReadable, { headers })
+        return new Response(customReadable, { headers, status: 200, statusText: taskID })
     } catch (error) {
         console.error('Error handling GET request:', error)
         return NextResponse.json(
@@ -146,6 +152,7 @@ export async function POST(request: Request) {
             isLastFile,
             type,
             corrections,
+            taskID
         } = body
 
         const correctedContent = corrections
@@ -192,23 +199,25 @@ export async function POST(request: Request) {
         await github.createPullRequest(prTitle, prBody, forkedOwner, forkedRepo)
 
         if (isLastFile) {
-            const statusUrl = `${baseUrl}/api/status`
-            const statusResponse = await fetch(statusUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    logs: ['Pull request created successfully.'],
-                    id: `${owner}@${repo}`,
-                }),
-            })
-            if (!statusResponse.ok) {
-                console.error(
-                    'Failed to update status:',
-                    await statusResponse.text()
-                )
-            }
+            // const statusUrl = `${baseUrl}/api/status`
+            // const statusResponse = await fetch(statusUrl, {
+            //     method: 'POST',
+            //     headers: {
+            //         'Content-Type': 'application/json',
+            //     },
+            //     body: JSON.stringify({
+            //         logs: ['Pull request created successfully.'],
+            //         id: `${owner}@${repo}`,
+            //     }),
+            // })
+            // if (!statusResponse.ok) {
+            //     console.error(
+            //         'Failed to update status:',
+            //         await statusResponse.text()
+            //     )
+            // 
+            await storeItem(`${taskID}`, 'completed')
+
         }
         return new Response('OK', { status: 200 })
     } catch (error) {
@@ -218,4 +227,8 @@ export async function POST(request: Request) {
         )
         return new Response('Internal server error', { status: 500 })
     }
+}
+
+function getCurrentTime() {
+    return new Date().toISOString();
 }

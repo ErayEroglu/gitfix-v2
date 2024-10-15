@@ -25,6 +25,7 @@ export const POST = serve<{
     repo: string
     isLastFile: boolean
     type: string
+    taskID: string
 }>(
     async (context) => {
         const request = context.requestPayload
@@ -37,6 +38,7 @@ export const POST = serve<{
             repo,
             isLastFile,
             type,
+            taskID
         } = request
 
         const qstashToken = process.env.QSTASH_TOKEN
@@ -97,6 +99,7 @@ export const POST = serve<{
                     isLastFile,
                     type,
                     corrections,
+                    taskID
                 }),
             }
         )

@@ -32,7 +32,6 @@ export async function POST(request: Request) {
         if (!id) {
             return new Response('Missing request ID', { status: 400 })
         }
-
         statusMap[id] = logs.length > 0 ? 'completed' : 'in-progress'
         return new Response(JSON.stringify({ message: 'OK' }), { status: 200 })
     } catch (error) {
