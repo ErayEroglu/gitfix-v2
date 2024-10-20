@@ -382,9 +382,10 @@ export class Github_API {
     // reposityory information
     private async getRepoDetails(): Promise<any> {
         const headers = this.headers
+        console.log('Fetching repository details' + this.headers)
         const response = await fetch(this.url, { headers })
         if (!response.ok) {
-            throw new Error('could not fetch details')
+            throw new Error('could not fetch details : ' + response.statusText)
         }
         return await response.json()
     }

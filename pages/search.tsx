@@ -56,43 +56,43 @@ export default function Search() {
         if (polling) {
             intervalId = setInterval(async () => {
                 try {
-                    // const response = await fetch(
-                    //     `/api/status?id=${owner}@${repo}`,
-                    //     {
-                    //         method: 'GET',
-                    //         headers: { 'Content-Type': 'application/json' },
-                    //     }
-                    // )
-                    // if (response.ok) {
-                    //     const data = await response.json()
-                    //     if (data.status === 'completed') {
-                    //         setLogs((prevLogs) => [
-                    //             ...prevLogs,
-                    //             'Pull request created, you can check your repository.',
-                    //         ])
-                    //         setPolling(false)
-                    //         setMessage(
-                    //             'All files are processed. The pull request has been created.'
-                    //         )
-                    //     }
-                    // } else {
-                    //     console.error(
-                    //         'Failed to fetch status:',
-                    //         await response.text()
-                    //     )
-                    // }
-
-                    if (await getItem(`${taskID}`) === 'completed') {
-                        console.log('inside PR log')
-                        setLogs((prevLogs) => [
-                            ...prevLogs,
-                            'Pull request created, you can check your repository.',
-                        ])
-                        setPolling(false)
-                        setMessage(
-                            'All files are processed. The pull request has been created.'
+                    const response = await fetch(
+                        `/api/status?id=${owner}@${repo}`,
+                        {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json' },
+                        }
+                    )
+                    if (response.ok) {
+                        const data = await response.json()
+                        if (data.status === 'completed') {
+                            setLogs((prevLogs) => [
+                                ...prevLogs,
+                                'Pull request created, you can check your repository.',
+                            ])
+                            setPolling(false)
+                            setMessage(
+                                'All files are processed. The pull request has been created.'
+                            )
+                        }
+                    } else {
+                        console.error(
+                            'Failed to fetch status:',
+                            await response.text()
                         )
                     }
+
+                    // if (await getItem(`${taskID}`) === 'completed') {
+                    //     console.log('inside PR log')
+                    //     setLogs((prevLogs) => [
+                    //         ...prevLogs,
+                    //         'Pull request created, you can check your repository.',
+                    //     ])
+                    //     setPolling(false)
+                    //     setMessage(
+                    //         'All files are processed. The pull request has been created.'
+                    //     )
+                    // }
                 } catch (error) {
                     console.error('Polling error:', error)
                 }
@@ -116,14 +116,19 @@ export default function Search() {
             await clearLogs(repoInfo.owner, repoInfo.repo)
             setMessage('')
             try {
-                let endpoint = `/api/gitfix?owner=${repoInfo.owner}&repo=${repoInfo.repo}&type=${repoInfo.type}`
-                if (!repoInfo.type) {
-                    endpoint = `/api/gitfix?owner=${repoInfo.owner}&repo=${repoInfo.repo}&type=${repoInfo.type}&filePath=${repoInfo.filePath}`
-                }
-                console.log('endpoint:', endpoint)  
+                const endpoint = `/api/workflow`
+                const body = JSON.stringify({
+                    owner: repoInfo.owner,
+                    repo: repoInfo.repo,
+                    type: repoInfo.type,
+                    filePath: repoInfo.filePath,
+                    branch: repoInfo.branch,
+                })
+                console.log('endpoint:', endpoint)
                 const response = await fetch(endpoint, {
-                    method: 'GET',
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    body: body,
                 })
 
                 if (response.ok) {
