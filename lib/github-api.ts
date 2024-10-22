@@ -76,6 +76,7 @@ export class Github_API {
         flag: boolean,
         inputBranch?: string | null
     ): Promise<void> {
+        console.log('Updating file content in the given repo')
         const url = `https://api.github.com/repos/${forkedOwner}/${forkedRepo}/contents/${filePath}`
         const headers = this.headers
         const encodedContent = this.encodeBase64(content)
