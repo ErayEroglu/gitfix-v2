@@ -1,4 +1,5 @@
 import { RedisManager } from '@/lib/redis-utils'
+import { sleep } from 'openai/core.mjs'
 
 const redis = new RedisManager()
 
@@ -7,11 +8,18 @@ export async function POST(request: Request) {
         const body = await request.json()
         const taskID = body.taskID
         const log = body.log
+        const status = body.status
         console.log('At POST handler taskID:', taskID + ' and log:', log)
         if (!taskID || !log) {
             return new Response('Missing task ID or log', { status: 400 })
         }
-      
+        if (status === 'error') {
+            const error = 'ERROR: ' + log
+            redis.clearAllLogs(taskID)
+            await sleep(1000)
+            redis.addLog(taskID, error)
+            return new Response( JSON.stringify({ message: 'Error logs are stored successfully' }), { status: 200 })
+        }
         redis.addLog(taskID, log)
         return new Response(
             JSON.stringify({ message: 'Logs are stored successfully' }),

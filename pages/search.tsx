@@ -67,8 +67,11 @@ export default function Search() {
                     }
 
                     const status = await response.json()
-                    console.log('status:', status)
                     const logs = (status.logs || []).reverse()
+                    if (logs[0].startsWith('ERROR')) {
+                        setLogs([])
+                        setMessage(logs[0])
+                    }
                     setLogs(logs)
                 } catch (error) {
                     console.error('Polling error:', error)
@@ -162,29 +165,6 @@ export default function Search() {
             setMessage('Please check the link')
         }
     }
-
-    const clearLogs = async (owner: string, repo: string) => {
-        try {
-            const id = `${owner}@${repo}`
-            const response = await fetch(`/api/status?id=${id}`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' }, // DELETE typically doesn't require a body, so this header can be optional
-            })
-
-            if (!response.ok) {
-                const errorData = await response.json()
-                console.error('Error clearing logs:', errorData)
-                setMessage(`Error clearing logs: ${errorData.message}`)
-            } else {
-                console.log('Logs cleared successfully')
-                setMessage('Logs cleared successfully.')
-            }
-        } catch (error) {
-            console.error('Error clearing logs:', error)
-            setMessage('An unexpected error occurred while clearing logs.')
-        }
-    }
-
     return (
         <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
             <Card className="w-full max-w-md">

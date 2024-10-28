@@ -36,8 +36,13 @@ export const POST = serve<{
             prompt,
             openaiToken,
         } = await context.run('Worklflow initilization', async () => {
-            return await initializeWorkflow(context)
+            return (await initializeWorkflow(context)) as any
         })
+
+        if (!github) {
+            return
+        }
+
         let counter = 0
         let numberOfFiles = Object.keys(github.md_files_content).length
 
@@ -113,20 +118,35 @@ async function initializeWorkflow(context: any) {
         throw new Error('Missing QSTASH_TOKEN or OPENAI_API_KEY')
     }
 
-    const time = new Date().getTime()
     await client.publish({
         url: url,
         body: JSON.stringify({
             log: ' Workflow started, repository details are being fetched',
-            taskID : taskID,
+            taskID: taskID,
+            status: 'success',
         }),
     })
 
     const github = new Github_API(owner, repo, inputType)
-    if (!inputType) {
-        await github.initializeRepoDetails(filePath, branch)
-    } else {
-        await github.initializeRepoDetails()
+
+    try {
+        if (!inputType) {
+            await github.initializeRepoDetails(filePath, branch)
+        } else {
+            await github.initializeRepoDetails()
+        }
+    } catch (error) {
+        await client.publish({
+            url: url,
+            body: JSON.stringify({
+                log: `Error fetching file details for ${filePath}: ${
+                    (error as any).message
+                }`,
+                taskID: taskID,
+                status: 'error',
+            }),
+        })
+        return null
     }
 
     const forked_repo_info = await github.forkRepository()
@@ -135,7 +155,8 @@ async function initializeWorkflow(context: any) {
         url: url,
         body: JSON.stringify({
             log: 'Repository details are initialized, and the repository is forked',
-            taskID : taskID,
+            taskID: taskID,
+            status: 'success',
         }),
     })
 
@@ -161,7 +182,8 @@ async function initializeWorkflow(context: any) {
         url: url,
         body: JSON.stringify({
             log: `Text content for ${filePath} is sent to the OPENAI API, waiting for the grammatical errors to be fixed`,
-            taskID : taskID,
+            taskID: taskID,
+            status: 'success',
         }),
     })
     return {
@@ -190,6 +212,19 @@ async function processCorrections(
 ) {
     const url = process.env.UPSTASH_WORKFLOW_URL + '/api/status'
     const client = new Client({ token: process.env.QSTASH_TOKEN as string })
+
+    if (!corrections) {
+        await client.publish({
+            url: url,
+            body: JSON.stringify({
+                log: 'Grammar correction is not returned from the OpenAI API, please check the environment variables',
+                taskID: taskID,
+                status: 'error',
+            }),
+        })
+        return
+    }
+
     const github = new Github_API(owner, repo, 0, filePath)
     await github.initializeRepoDetails(filePath, branch)
 
@@ -197,23 +232,37 @@ async function processCorrections(
         url: url,
         body: JSON.stringify({
             log: 'Grammatical errors are fixed in the markdown file, committing the changes',
-            taskID : taskID,
+            taskID: taskID,
+            status: 'success',
         }),
     })
 
-    await commitCorrections(
-        github,
-        filePath,
-        corrections,
-        forkedOwner,
-        forkedRepo
-    )
+    try {
+        await commitCorrections(
+            github,
+            filePath,
+            corrections,
+            forkedOwner,
+            forkedRepo
+        )
+    } catch (error) {
+        await client.publish({
+            url: url,
+            body: JSON.stringify({
+                log: `Error committing the changes: ${(error as any).message}`,
+                taskID: taskID,
+                status: 'error',
+            }),
+        })
+        return
+    }
 
     await client.publish({
         url: url,
         body: JSON.stringify({
             log: 'Changes are committed, creating a pull request',
-            taskID : taskID,
+            taskID: taskID,
+            status: 'success',
         }),
     })
 
@@ -223,13 +272,27 @@ async function processCorrections(
         'Changes are made by Gitfix, which is an AI-powered application, ' +
         'aims to help developers in their daily tasks.'
     console.log('Creating a pull request')
-    await github.createPullRequest(prTitle, prBody, forkedOwner, forkedRepo)
-
+    try {
+        await github.createPullRequest(prTitle, prBody, forkedOwner, forkedRepo)
+    } catch (error) {
+        await client.publish({
+            url: url,
+            body: JSON.stringify({
+                log: `Error creating the pull request: ${
+                    (error as any).message
+                }`,
+                taskID: taskID,
+                status: 'error',
+            }),
+        })
+        return
+    }
     await client.publish({
         url: url,
         body: JSON.stringify({
             log: 'Pull request is created, the task is completed. You can check the pull request on the repository',
-            taskID : taskID,
+            taskID: taskID,
+            status: 'success',
         }),
     })
 }

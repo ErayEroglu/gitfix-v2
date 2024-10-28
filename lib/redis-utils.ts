@@ -67,8 +67,15 @@ export class RedisManager {
     }
 
     /**
-     * Retrieves all log entries for a specific task ID.
+     * Clears all log entries for a specific task ID.
      */
+    public async clearAllLogs(taskID: string): Promise<void> {
+        try {
+            await this.redis.del(taskID); // Delete the key and its associated logs
+        } catch (error) {
+            console.error('Error clearing logs:', error);
+        }
+    }
     public async getLogs(taskID: string): Promise<string[]> {
         try {
             const logs = await this.redis.lrange(taskID, 0, -1); // Get all logs
