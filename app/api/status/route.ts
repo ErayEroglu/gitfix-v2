@@ -1,61 +1,44 @@
-import { NextResponse } from 'next/server'
+import { RedisManager } from '@/lib/redis-utils'
 
-let statusMap: Record<string, "in-progress" | "completed"> = {}
+const redis = new RedisManager()
 
-// This is the API route that will be called by the client
-// to check the status of the request
-// It is used to update the logs on the client side
+export async function POST(request: Request) {
+    try {
+        const body = await request.json()
+        const taskID = body.taskID
+        const log = body.log
+        console.log('At POST handler taskID:', taskID + ' and log:', log)
+        if (!taskID || !log) {
+            return new Response('Missing task ID or log', { status: 400 })
+        }
+      
+        redis.addLog(taskID, log)
+        return new Response(
+            JSON.stringify({ message: 'Logs are stored successfully' }),
+            {
+                status: 200,
+            }
+        )
+    } catch (error) {
+        console.error('Error fetching logs:', error)
+        return new Response('Internal server error', { status: 500 })
+    }
+}
+
 export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url)
         const id = searchParams.get('id')
         if (!id) {
-            return NextResponse.json("in-progress")
-        }
-        console.log('statusMap[id]:', statusMap[id])
-        const status = statusMap[id] || "in-progress"
-        return NextResponse.json({ status: `${status}`})
-        } catch (error) {
-        console.error('Error fetching status:', error)
-        return new Response('Internal server error', { status: 500 })
-    }
-}
-
-// This is the API route that will be called by the server side
-// to update the status of the request
-// When the task is completed by QStash and the PR is created, the status is updated to 'completed'
-export async function POST(request: Request) {
-    try {
-        const body = await request.json()
-        const id = body.id
-        const logs = body.logs || []
-        if (!id) {
             return new Response('Missing request ID', { status: 400 })
         }
-        statusMap[id] = logs.length > 0 ? 'completed' : 'in-progress'
-        return new Response(JSON.stringify({ message: 'OK' }), { status: 200 })
-    } catch (error) {
-        console.error('Error updating status:', error)
-        return new Response('Internal server error', { status: 500 })
-    }
-}
-
-// This is the API route that will be called to clear the logs
-// It resets the status of the request to 'in-progress'
-export async function DELETE(request: Request) {
-    try {
-        const { searchParams } = new URL(request.url);
-        const id = searchParams.get('id');
-        if (!id) {
-            return new Response('Missing request ID', { status: 400 });
+        const logs = await redis.getLogs(id)
+        if (!logs) {
+            return new Response('No logs found', { status: 404 })
         }
-
-        // Reset the status to 'in-progress'
-        statusMap[id] = 'in-progress';
-    
-        return new Response(JSON.stringify({ message: 'Logs cleared and status reset to in-progress' }), { status: 200 });
+        console.log('Logs from GET handler : ' + logs)
+        return new Response(JSON.stringify({ logs: logs }), { status: 200 })
     } catch (error) {
-        console.error('Error clearing logs:', error);
-        return new Response('Internal server error', { status: 500 });
+        return new Response('Internal server error', { status: 500 })
     }
 }

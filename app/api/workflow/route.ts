@@ -1,13 +1,8 @@
 import { serve } from '@upstash/qstash/nextjs'
+import { Client } from '@upstash/qstash'
 import OpenAI from 'openai'
 import { Github_API } from '@/lib/github-api'
-import {
-    addFixedFile,
-    isFileFixed,
-    clearDatabase,
-    storeItem,
-    getItem,
-} from '@/lib/redis-utils'
+import { RedisManager } from '@/lib/redis-utils'
 
 type OpenAiResponse = {
     choices: {
@@ -50,7 +45,6 @@ export const POST = serve<{
             counter++
             const originalContent = github.md_files_content[filePath]
             const isLastFile = counter === numberOfFiles
-
             console.log('sending the task to the workflow')
             const response = await context.call<OpenAiResponse>(
                 'markdown grammar correction',
@@ -69,10 +63,8 @@ export const POST = serve<{
                 },
                 { authorization: `Bearer ${openaiToken}` }
             )
-
             console.log('response  is taken from workflow')
             const corrections = response.choices[0].message.content
-            console.log('corrections are here:', corrections)
             console.log('Sending PR part')
 
             await context.run('PR creation', async () => {
@@ -100,14 +92,18 @@ export const POST = serve<{
 )
 
 async function initializeWorkflow(context: any) {
-    // TODO: delete this line
-    await clearDatabase()
+    const client = new Client({ token: process.env.QSTASH_TOKEN as string })
+    const url = process.env.UPSTASH_WORKFLOW_URL + '/api/status'
+
+    const redis = new RedisManager()
+    redis.clearDatabase()
     const request = context.requestPayload
     const owner = request.owner
     const repo = request.repo
     const type = request.type
     const filePath = request.filePath
     const branch = request.branch
+    const taskID = request.taskID
     const inputType = Number(type)
 
     const qstashToken = process.env.QSTASH_TOKEN
@@ -118,9 +114,15 @@ async function initializeWorkflow(context: any) {
     }
 
     const time = new Date().getTime()
-    const taskID = `${owner}@${repo}@${time}`
-    const github = new Github_API(owner, repo, inputType)
+    await client.publish({
+        url: url,
+        body: JSON.stringify({
+            log: ' Workflow started, repository details are being fetched',
+            taskID : taskID,
+        }),
+    })
 
+    const github = new Github_API(owner, repo, inputType)
     if (!inputType) {
         await github.initializeRepoDetails(filePath, branch)
     } else {
@@ -128,6 +130,15 @@ async function initializeWorkflow(context: any) {
     }
 
     const forked_repo_info = await github.forkRepository()
+
+    await client.publish({
+        url: url,
+        body: JSON.stringify({
+            log: 'Repository details are initialized, and the repository is forked',
+            taskID : taskID,
+        }),
+    })
+
     const forkedOwner = forked_repo_info[0]
     const forkedRepo = forked_repo_info[1]
     await github.getFileContent()
@@ -146,7 +157,13 @@ async function initializeWorkflow(context: any) {
         DO NOT change the words with their synonyms.
         DO NOT erase the front matter section. 
         `
-
+    await client.publish({
+        url: url,
+        body: JSON.stringify({
+            log: `Text content for ${filePath} is sent to the OPENAI API, waiting for the grammatical errors to be fixed`,
+            taskID : taskID,
+        }),
+    })
     return {
         github,
         owner,
@@ -171,8 +188,19 @@ async function processCorrections(
     taskID: string,
     isLastFile: boolean
 ) {
+    const url = process.env.UPSTASH_WORKFLOW_URL + '/api/status'
+    const client = new Client({ token: process.env.QSTASH_TOKEN as string })
     const github = new Github_API(owner, repo, 0, filePath)
     await github.initializeRepoDetails(filePath, branch)
+
+    await client.publish({
+        url: url,
+        body: JSON.stringify({
+            log: 'Grammatical errors are fixed in the markdown file, committing the changes',
+            taskID : taskID,
+        }),
+    })
+
     await commitCorrections(
         github,
         filePath,
@@ -180,7 +208,14 @@ async function processCorrections(
         forkedOwner,
         forkedRepo
     )
-    await addFixedFile(`${forkedOwner}@${forkedRepo}@${filePath}`)
+
+    await client.publish({
+        url: url,
+        body: JSON.stringify({
+            log: 'Changes are committed, creating a pull request',
+            taskID : taskID,
+        }),
+    })
 
     const prTitle = 'Fix grammatical errors in markdown files by Gitfix'
     const prBody =
@@ -189,9 +224,14 @@ async function processCorrections(
         'aims to help developers in their daily tasks.'
     console.log('Creating a pull request')
     await github.createPullRequest(prTitle, prBody, forkedOwner, forkedRepo)
-    if (isLastFile) {
-        await storeItem(`${taskID}`, 'completed')
-    }
+
+    await client.publish({
+        url: url,
+        body: JSON.stringify({
+            log: 'Pull request is created, the task is completed. You can check the pull request on the repository',
+            taskID : taskID,
+        }),
+    })
 }
 
 async function commitCorrections(

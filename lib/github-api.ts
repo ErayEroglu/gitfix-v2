@@ -1,7 +1,9 @@
-import { isFileFixed } from './redis-utils'
+// import { isFileFixed } from './redis-utils'
+import { RedisManager } from "./redis-utils"
 
 const GITHUB_API_VERSION = '2022-11-28'
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
+const redis = new RedisManager()
 
 export class Github_API {
     owner: string
@@ -251,7 +253,7 @@ export class Github_API {
     
         // Search for README.md specifically first
         for (const item of data.tree) {
-            if (item.type === 'blob' && item.path.toLowerCase() === 'readme.md' && !(await isFileFixed(this.owner + '@' + this.repo + '@' + item.path))) {
+            if (item.type === 'blob' && item.path.toLowerCase() === 'readme.md' && !(await redis.isFileFixed(this.owner + '@' + this.repo + '@' + item.path))) {
                 this.items.push({ path: item.path, sha: item.sha })
                 readmeFound = true;
                 break; // prioritize the README file and stop searching
@@ -260,7 +262,7 @@ export class Github_API {
         // If README.md is not found, search for other markdown files
         if (!readmeFound) {
             for (const item of data.tree ) {
-                if (item.type === 'blob' && !(await isFileFixed(this.owner + '@' + this.repo + '@' + item.path))) {
+                if (item.type === 'blob' && !(await redis.isFileFixed(this.owner + '@' + this.repo + '@' + item.path))) {
                     let type = item.path.split('.').pop()
                     if (type == 'md' || type === 'mdx') {
                         this.items.push({ path: item.path, sha: item.sha })

@@ -1,42 +1,92 @@
-import { Redis } from '@upstash/redis'
+import { Redis } from '@upstash/redis';
 
-const redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN,
-})
+export class RedisManager {
+    private redis: Redis;
 
-/**
- * Adds a file path to the Redis set.
- */
-export async function addFixedFile(filePath: string): Promise<void> {
-    await redis.sadd('fixed_files', filePath)
-}
+    constructor() {
+        this.redis = new Redis({
+            url: process.env.UPSTASH_REDIS_REST_URL as string,
+            token: process.env.UPSTASH_REDIS_REST_TOKEN as string,
+        });
+    }
 
-/**
- * Checks if a file path is already in the Redis set.
- */
-export async function isFileFixed(filePath: string): Promise<boolean> {
-    const result = await redis.sismember('fixed_files', filePath)
-    return result === 1
-}
+    /**
+     * Adds a file path to the Redis set.
+     */
+    public async addFixedFile(filePath: string): Promise<void> {
+        await this.redis.sadd('fixed_files', filePath);
+    }
 
-/**
- * Gets all fixed file paths from the Redis set.
- */
-export async function getAllFixedFiles(): Promise<string[]> {
-    const result = await redis.smembers('fixed_files')
-    return result
-}
+    /**
+     * Checks if a file path is already in the Redis set.
+     */
+    public async isFileFixed(filePath: string): Promise<boolean> {
+        const result = await this.redis.sismember('fixed_files', filePath);
+        return result === 1;
+    }
 
-export async function storeItem(key: string, value: string): Promise<void> {
-    await redis.set(key, value)
-}
+    /**
+     * Gets all fixed file paths from the Redis set.
+     */
+    public async getAllFixedFiles(): Promise<string[]> {
+        const result = await this.redis.smembers('fixed_files');
+        return result;
+    }
 
-export async function getItem(key: string): Promise<string | null> {
-    const value = await redis.get(key)
-    return value as string
-}
+    /**
+     * Stores an item in Redis with a specified key and value.
+     */
+    public async storeItem(key: string, value: string): Promise<void> {
+        await this.redis.set(key, value);
+    }
 
-export async function clearDatabase(): Promise<void> {
-    await redis.flushall()
+    /**
+     * Retrieves an item from Redis by key.
+     */
+    public async getItem(key: string): Promise<string | null> {
+        const value = await this.redis.get(key);
+        return value as string;
+    }
+
+    /**
+     * Clears the entire Redis database.
+     */
+    public async clearDatabase(): Promise<void> {
+        await this.redis.flushall();
+    }
+
+    /**
+     * Adds a log entry for a specific task ID.
+     */
+    public async addLog(taskID: string, logMessage: string): Promise<void> {
+        try {
+            await this.redis.lpush(taskID, logMessage); // Add the log entry to the taskID list
+        } catch (error) {
+            console.error('Error adding log:', error);
+        }
+    }
+
+    /**
+     * Retrieves all log entries for a specific task ID.
+     */
+    public async getLogs(taskID: string): Promise<string[]> {
+        try {
+            const logs = await this.redis.lrange(taskID, 0, -1); // Get all logs
+            return logs;
+        } catch (error) {
+            console.error('Error retrieving logs:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Deletes logs for a specific task ID.
+     */
+    public async deleteLogs(taskID: string): Promise<void> {
+        try {
+            await this.redis.del(taskID); // Delete the key and its associated logs
+        } catch (error) {
+            console.error('Error deleting logs:', error);
+        }
+    }
 }

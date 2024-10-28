@@ -6,7 +6,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Loader2, AlertCircle } from 'lucide-react'
 import UpstashLogo from '@/components/ui/upstash-logo'
 import PoweredBy from '@/components/ui/powered-by'
-import { getItem } from '@/lib/redis-utils'
 
 interface RepoInfo {
     owner: string
@@ -56,43 +55,21 @@ export default function Search() {
         if (polling) {
             intervalId = setInterval(async () => {
                 try {
-                    const response = await fetch(
-                        `/api/status?id=${owner}@${repo}`,
-                        {
-                            method: 'GET',
-                            headers: { 'Content-Type': 'application/json' },
-                        }
-                    )
-                    if (response.ok) {
-                        const data = await response.json()
-                        if (data.status === 'completed') {
-                            setLogs((prevLogs) => [
-                                ...prevLogs,
-                                'Pull request created, you can check your repository.',
-                            ])
-                            setPolling(false)
-                            setMessage(
-                                'All files are processed. The pull request has been created.'
-                            )
-                        }
-                    } else {
-                        console.error(
-                            'Failed to fetch status:',
-                            await response.text()
+                    const response = await fetch(`/api/status?id=${taskID}`, {
+                        method: 'GET',
+                        headers: { 'Content-Type': 'application/json' },
+                    })
+
+                    if (!response.ok) {
+                        throw new Error(
+                            `HTTP error! Status: ${response.status}`
                         )
                     }
 
-                    // if (await getItem(`${taskID}`) === 'completed') {
-                    //     console.log('inside PR log')
-                    //     setLogs((prevLogs) => [
-                    //         ...prevLogs,
-                    //         'Pull request created, you can check your repository.',
-                    //     ])
-                    //     setPolling(false)
-                    //     setMessage(
-                    //         'All files are processed. The pull request has been created.'
-                    //     )
-                    // }
+                    const status = await response.json()
+                    console.log('status:', status)
+                    const logs = (status.logs || []).reverse()
+                    setLogs(logs)
                 } catch (error) {
                     console.error('Polling error:', error)
                 }
@@ -102,7 +79,7 @@ export default function Search() {
         return () => {
             if (intervalId) clearInterval(intervalId)
         }
-    }, [polling, owner, repo])
+    }, [polling, taskID])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -113,16 +90,19 @@ export default function Search() {
             setOwner(repoInfo.owner)
             setRepo(repoInfo.repo)
             setIsLoading(true)
-            await clearLogs(repoInfo.owner, repoInfo.repo)
             setMessage('')
             try {
                 const endpoint = `/api/workflow`
+                const time = new Date().getTime()
+                const taskID = `${repoInfo.owner}@${repoInfo.repo}@${time}`
+                setTaskID(taskID)
                 const body = JSON.stringify({
                     owner: repoInfo.owner,
                     repo: repoInfo.repo,
                     type: repoInfo.type,
                     filePath: repoInfo.filePath,
                     branch: repoInfo.branch,
+                    taskID: taskID,
                 })
                 console.log('endpoint:', endpoint)
                 const response = await fetch(endpoint, {
@@ -133,7 +113,6 @@ export default function Search() {
 
                 if (response.ok) {
                     setPolling(true)
-                    setTaskID(response.statusText)
                     const reader = response.body?.getReader()
                     const decoder = new TextDecoder()
                     let accumulatedData = ''
@@ -186,25 +165,25 @@ export default function Search() {
 
     const clearLogs = async (owner: string, repo: string) => {
         try {
-            const id = `${owner}@${repo}`;
+            const id = `${owner}@${repo}`
             const response = await fetch(`/api/status?id=${id}`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' }, // DELETE typically doesn't require a body, so this header can be optional
-            });
-    
+            })
+
             if (!response.ok) {
-                const errorData = await response.json();
-                console.error('Error clearing logs:', errorData);
-                setMessage(`Error clearing logs: ${errorData.message}`);
+                const errorData = await response.json()
+                console.error('Error clearing logs:', errorData)
+                setMessage(`Error clearing logs: ${errorData.message}`)
             } else {
-                console.log('Logs cleared successfully');
-                setMessage('Logs cleared successfully.');
+                console.log('Logs cleared successfully')
+                setMessage('Logs cleared successfully.')
             }
         } catch (error) {
-            console.error('Error clearing logs:', error);
-            setMessage('An unexpected error occurred while clearing logs.');
+            console.error('Error clearing logs:', error)
+            setMessage('An unexpected error occurred while clearing logs.')
         }
-    };
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -266,7 +245,6 @@ export default function Search() {
                     )}
 
                     {logs.length > 0 && (
-                        console.log('logs:', logs),
                         <Card className="mt-6 max-h-64 overflow-y-auto">
                             <CardHeader>
                                 <CardTitle className="text-lg">
