@@ -3,6 +3,7 @@ import { Client } from '@upstash/qstash'
 import OpenAI from 'openai'
 import { Github_API } from '@/lib/github-api'
 import { RedisManager } from '@/lib/redis-utils'
+import { sleep } from 'openai/core.mjs'
 
 type OpenAiResponse = {
     choices: {
@@ -125,8 +126,8 @@ async function initializeWorkflow(context: any) {
             taskID: taskID,
             status: 'success',
         }),
-    })
-
+    })  
+    await sleep(1000)
     const github = new Github_API(owner, repo, inputType)
 
     try {
@@ -150,7 +151,7 @@ async function initializeWorkflow(context: any) {
     }
 
     const forked_repo_info = await github.forkRepository()
-
+    await sleep(1000)
     await client.publish({
         url: url,
         body: JSON.stringify({
@@ -162,6 +163,7 @@ async function initializeWorkflow(context: any) {
 
     const forkedOwner = forked_repo_info[0]
     const forkedRepo = forked_repo_info[1]
+
     try {
         await github.getFileContent()
     } catch (error) {
@@ -177,6 +179,7 @@ async function initializeWorkflow(context: any) {
         })
         return
     }
+
     const prompt = `
         I want you to fix grammatical errors in a markdown file.
         I will give you the file and you will correct grammatical errors in the text (paragraphs and headers).
@@ -192,6 +195,7 @@ async function initializeWorkflow(context: any) {
         DO NOT change the words with their synonyms.
         DO NOT erase the front matter section. 
         `
+    await sleep(1000)
     await client.publish({
         url: url,
         body: JSON.stringify({
@@ -200,6 +204,7 @@ async function initializeWorkflow(context: any) {
             status: 'success',
         }),
     })
+
     return {
         github,
         owner,
