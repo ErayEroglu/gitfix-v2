@@ -17,6 +17,7 @@ export async function POST(request: Request) {
             const error = 'ERROR: ' + log
             redis.clearAllLogs(taskID)
             await sleep(1000)
+            //TODO: this part will be deleted
             redis.addLog(taskID, error)
             return new Response( JSON.stringify({ message: 'Error logs are stored successfully' }), { status: 200 })
         }

@@ -3,7 +3,6 @@ import { Client } from '@upstash/qstash'
 import OpenAI from 'openai'
 import { Github_API } from '@/lib/github-api'
 import { RedisManager } from '@/lib/redis-utils'
-import { sleep } from 'openai/core.mjs'
 
 type OpenAiResponse = {
     choices: {
@@ -69,10 +68,8 @@ export const POST = serve<{
                 },
                 { authorization: `Bearer ${openaiToken}` }
             )
-            console.log('response  is taken from workflow')
-            const corrections = response.choices[0].message.content
-            console.log('Sending PR part')
 
+            const corrections = response.choices[0].message.content
             await context.run('PR creation', async () => {
                 await processCorrections(
                     owner,
@@ -127,7 +124,7 @@ async function initializeWorkflow(context: any) {
             status: 'success',
         }),
     })  
-    await sleep(1000)
+
     const github = new Github_API(owner, repo, inputType)
 
     try {
@@ -147,11 +144,11 @@ async function initializeWorkflow(context: any) {
                 status: 'error',
             }),
         })
-        return null
+        return
     }
 
     const forked_repo_info = await github.forkRepository()
-    await sleep(1000)
+
     await client.publish({
         url: url,
         body: JSON.stringify({
@@ -195,7 +192,6 @@ async function initializeWorkflow(context: any) {
         DO NOT change the words with their synonyms.
         DO NOT erase the front matter section. 
         `
-    await sleep(1000)
     await client.publish({
         url: url,
         body: JSON.stringify({
