@@ -139,7 +139,7 @@ async function initializeWorkflow(context: any) {
         await client.publish({
             url: url,
             body: JSON.stringify({
-                log: `Error fetching file details for ${filePath}: ${
+                log: `Error fetching repository details for ${owner}/${repo}: ${
                     (error as any).message
                 }`,
                 taskID: taskID,
@@ -162,7 +162,21 @@ async function initializeWorkflow(context: any) {
 
     const forkedOwner = forked_repo_info[0]
     const forkedRepo = forked_repo_info[1]
-    await github.getFileContent()
+    try {
+        await github.getFileContent()
+    } catch (error) {
+        await client.publish({
+            url: url,
+            body: JSON.stringify({
+                log: `Error fetching file details for ${filePath}: ${
+                    (error as any).message
+                }`,
+                taskID: taskID,
+                status: 'error',
+            }),
+        })
+        return
+    }
     const prompt = `
         I want you to fix grammatical errors in a markdown file.
         I will give you the file and you will correct grammatical errors in the text (paragraphs and headers).
