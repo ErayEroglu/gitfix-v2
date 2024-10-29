@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Loader2, AlertCircle } from 'lucide-react'
+import { Loader2, AlertCircle,CheckCircle } from 'lucide-react'
 import UpstashLogo from '@/components/ui/upstash-logo'
 import PoweredBy from '@/components/ui/powered-by'
 
@@ -107,7 +107,6 @@ export default function Search() {
                     branch: repoInfo.branch,
                     taskID: taskID,
                 })
-                console.log('endpoint:', endpoint)
                 const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -171,7 +170,6 @@ export default function Search() {
                 <CardHeader>
                     <div className="flex items-center justify-center space-x-4">
                         {' '}
-                        {/* Flexbox container with space between items */}
                         <UpstashLogo height={40} />
                         <CardTitle className="text-3xl font-bold text-center text-gray-100">
                             GITFIX
@@ -213,7 +211,7 @@ export default function Search() {
                             variant={
                                 isLoading
                                     ? 'default'
-                                    : message.startsWith('Error')
+                                    : (message.startsWith('ERROR') || message.startsWith('Error'))
                                     ? 'destructive'
                                     : 'default'
                             }
@@ -228,18 +226,31 @@ export default function Search() {
                         <Card className="mt-6 max-h-64 overflow-y-auto">
                             <CardHeader>
                                 <CardTitle className="text-lg">
-                                    Processing Logs
+                                    Operations
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                {logs.map((log, index) => (
-                                    <p
-                                        key={index}
-                                        className="text-sm mb-2 text-gray-600"
-                                    >
-                                        {log}
-                                    </p>
-                                ))}
+                            <div className="space-y-2">
+                                    {logs.map((log, index) => (
+                                        <div
+                                            key={index}
+                                            className={`flex items-center ${
+                                                index === 0 ? 'bg-emerald-50 text-emerald-700' : 'hover:bg-gray-50'
+                                            }`}
+                                        >
+                                            { log && (
+                                                <>
+                                                    {index === logs.length - 1 && polling && (!log.startsWith('Pull') )? (
+                                                        <Loader2 className="animate-spin h-4 w-4 mr-2 flex-shrink-0" />
+                                                    ) : (
+                                                        <CheckCircle className="h-4 w-4 mr-2 flex-shrink-0 text-emerald-500" />
+                                                    )}
+                                                </>
+                                            )}
+                                            <span className="text-sm">{log}</span>
+                                        </div>
+                                    ))}
+                                </div>
                             </CardContent>
                         </Card>
                     )}

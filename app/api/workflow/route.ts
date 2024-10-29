@@ -195,7 +195,7 @@ async function initializeWorkflow(context: any) {
     await client.publish({
         url: url,
         body: JSON.stringify({
-            log: `Text content for ${filePath} is sent to the OPENAI API, waiting for the grammatical errors to be fixed`,
+            log: `Text content for ${filePath} is sent to the OpenAI API, waiting for the grammatical errors to be fixed`,
             taskID: taskID,
             status: 'success',
         }),
