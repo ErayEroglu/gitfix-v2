@@ -13,6 +13,8 @@ type OpenAiResponse = {
     }[]
 }
 
+const redis = new RedisManager()
+
 export function GET() {
     return new Response('Hello from the workflow endpoint!')
 }
@@ -47,10 +49,13 @@ export const POST = serve<{
         let numberOfFiles = Object.keys(github.md_files_content).length
 
         for (const filePath of Object.keys(github.md_files_content)) {
-            counter++
+            if (counter >= numberOfFiles) break;
+
+            console.log('filepath is : ' +  filePath)
+
             const originalContent = github.md_files_content[filePath]
             const isLastFile = counter === numberOfFiles
-            console.log('sending the task to the workflow')
+
             const response = await context.call<OpenAiResponse>(
                 'markdown grammar correction',
                 'https://api.openai.com/v1/chat/completions',
@@ -83,6 +88,7 @@ export const POST = serve<{
                     isLastFile
                 )
             })
+            counter++
         }
     },
     {
@@ -97,9 +103,6 @@ export const POST = serve<{
 async function initializeWorkflow(context: any) {
     const client = new Client({ token: process.env.QSTASH_TOKEN as string })
     const url = process.env.UPSTASH_WORKFLOW_URL + '/api/status'
-
-    const redis = new RedisManager()
-    redis.clearDatabase()
     const request = context.requestPayload
     const owner = request.owner
     const repo = request.repo
@@ -123,7 +126,7 @@ async function initializeWorkflow(context: any) {
             taskID: taskID,
             status: 'success',
         }),
-    })  
+    })
 
     const github = new Github_API(owner, repo, inputType)
 
@@ -191,11 +194,17 @@ async function initializeWorkflow(context: any) {
         DO NOT merge lines.
         DO NOT change the words with their synonyms.
         DO NOT erase the front matter section. 
+        ONLY modify alphanumerical characters (a-z, A-Z, 0-9)
+        DO NOT modify any other characters including:
+            - Special characters (!@#$%^&*()_+-=[]{}|;:,.<>?)
+            
+        Remove emojis
+        
         `
     await client.publish({
         url: url,
         body: JSON.stringify({
-            log: `Text content for ${filePath} is sent to the OpenAI API, waiting for the grammatical errors to be fixed`,
+            log: `Text content is sent to the OpenAI API, waiting for the grammatical errors to be fixed`,
             taskID: taskID,
             status: 'success',
         }),
@@ -302,6 +311,7 @@ async function processCorrections(
         })
         return
     }
+    redis.addFixedFile(owner +  '@' + repo + '@' + filePath)
     await client.publish({
         url: url,
         body: JSON.stringify({

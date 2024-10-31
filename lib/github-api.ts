@@ -1,5 +1,5 @@
 // import { isFileFixed } from './redis-utils'
-import { RedisManager } from "./redis-utils"
+import { RedisManager } from './redis-utils'
 
 const GITHUB_API_VERSION = '2022-11-28'
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
@@ -19,7 +19,13 @@ export class Github_API {
     inputType: number
     branch: string
 
-    constructor(owner: string, repo: string, inputType : number, filePath?: string | null, branch?: string) {
+    constructor(
+        owner: string,
+        repo: string,
+        inputType: number,
+        filePath?: string | null,
+        branch?: string
+    ) {
         this.owner = owner
         this.repo = repo
         this.inputType = inputType
@@ -32,7 +38,10 @@ export class Github_API {
         this.headers = this.getHeaders()
     }
 
-    async initializeRepoDetails(filePath?: string | null, branch?: string | null): Promise<void> {
+    async initializeRepoDetails(
+        filePath?: string | null,
+        branch?: string | null
+    ): Promise<void> {
         if (!this.inputType) {
             this.filePath = filePath as string
             this.branch = branch as string
@@ -47,7 +56,7 @@ export class Github_API {
     }
 
     // fork the target repo
-    async forkRepository(): Promise<any[]> {        
+    async forkRepository(): Promise<any[]> {
         const url = `https://api.github.com/repos/${this.owner}/${this.repo}/forks`
         const headers = this.headers
 
@@ -216,27 +225,30 @@ export class Github_API {
 
     private async getMdFiles(): Promise<void> {
         if (!this.inputType) {
-            const fileUrl = `${this.url}/contents/${this.filePath}`;
-            const headers = this.headers;
-            const response = await fetch(fileUrl, { headers });
+            const fileUrl = `${this.url}/contents/${this.filePath}`
+            const headers = this.headers
+            const response = await fetch(fileUrl, { headers })
 
             if (!response.ok) {
                 throw new Error(
                     `Github API is unable to retrieve file details: ${response.status}`
-                );
+                )
             }
 
-            const data = await response.json();
-            const fileSha = data.sha;
-            this.items.push({ path: this.filePath, sha: fileSha });
-            console.log(`Added ${this.filePath} with SHA ${fileSha} to the items array.`);
-            return;
+            const data = await response.json()
+            const fileSha = data.sha
+            this.items.push({ path: this.filePath, sha: fileSha })
+            console.log(
+                `Added ${this.filePath} with SHA ${fileSha} to the items array.`
+            )
+            return
         }
 
         const url =
             this.url +
             `/git/trees/${this.repo_details.default_branch}?recursive=0`
         console.log('we are trying to find files in this url ' + url)
+
         const headers = this.headers
         const response = await fetch(url, { headers })
         if (!response.ok) {
@@ -248,21 +260,52 @@ export class Github_API {
         console.log(
             `Searching for markdown files in ${this.owner + '/' + this.repo}`
         )
-        
-        let readmeFound = false;
-    
-        // Search for README.md specifically first
-        for (const item of data.tree) {
-            if (item.type === 'blob' && item.path.toLowerCase() === 'readme.md' && !(await redis.isFileFixed(this.owner + '@' + this.repo + '@' + item.path))) {
-                this.items.push({ path: item.path, sha: item.sha })
-                readmeFound = true;
-                break; // prioritize the README file and stop searching
+
+        const readmeUrls = [
+            `${this.url}/contents/README.md`,
+            `${this.url}/contents/README.mdx`,
+        ]
+
+        let readmeFound = false
+
+        for (const readmeUrl of readmeUrls) {
+            const response = await fetch(readmeUrl, { headers })
+            if (response.ok) {
+                const data = await response.json()
+                if (
+                    !(await redis.isFileFixed(
+                        this.owner + '@' + this.repo + '@' + data.path
+                    ))
+                ) {
+                    console.log('data path : ' + data.path)
+                    this.items.push({ path: data.path, sha: data.sha })
+                    readmeFound = true
+                    console.log(
+                        `Added ${data.path} with SHA ${data.sha} to the items array.`
+                    )
+                    break
+                }
             }
         }
-        // If README.md is not found, search for other markdown files
+
+        let counter = 0
+        let randomNumber = Math.floor(Math.random() * data.tree.length * 0.5)
+        console.log('tree lengthj is : ' + data.tree.length + ' and the random number is ' + randomNumber)
         if (!readmeFound) {
-            for (const item of data.tree ) {
-                if (item.type === 'blob' && !(await redis.isFileFixed(this.owner + '@' + this.repo + '@' + item.path))) {
+            for (const item of data.tree) {
+                if (this.items.length >= this.fileLimit) break;
+
+                if (counter < randomNumber) {
+                    counter++
+                    continue
+                }
+                console.log('the item is : ' +  item)
+                if (
+                    item.type === 'blob' &&
+                    !(await redis.isFileFixed(
+                        this.owner + '@' + this.repo + '@' + item.path
+                    ))
+                ) {
                     let type = item.path.split('.').pop()
                     if (type == 'md' || type === 'mdx') {
                         this.items.push({ path: item.path, sha: item.sha })
@@ -270,10 +313,11 @@ export class Github_API {
                 }
             }
         }
-    
+
         console.log(`Discovered ${this.items.length} items`)
+
     }
-    
+
     // get sthe content of each md file
     private async getMdFileDetails(): Promise<void> {
         let counter = 0
@@ -382,7 +426,6 @@ export class Github_API {
         return newPulls.length > 0
     }
 
-    // reposityory information
     private async getRepoDetails(): Promise<any> {
         const headers = this.headers
         console.log('Fetching repository details' + this.headers)
